@@ -345,7 +345,7 @@ SCHEMAS.actions = {
   fields: [
     { k: 'titre', l: 'Action', t: 'text', req: true, full: true },
     { k: 'responsable', l: 'Responsable', t: 'select', get o() { return ['Taoufik', ...db.agents.map(a => a.nom)]; }, def: 'Taoufik' },
-    { k: 'statut', l: 'Statut', t: 'select', o: ['À faire', 'En cours', 'Fait'], def: 'À faire' },
+    { k: 'statut', l: 'Statut', t: 'select', o: ['À faire', 'En cours', 'À valider', 'Fait'], def: 'À faire' },
     { k: 'priorite', l: 'Priorité', t: 'select', o: ['Haute', 'Normale', 'Basse'], def: 'Normale' },
     { k: 'echeance', l: 'Échéance', t: 'date' },
     { k: 'projet', l: 'Projet', t: 'projet' },
@@ -445,7 +445,8 @@ VIEWS.actions = () => {
     .filter(a => !st.who || a.responsable === st.who);
   const prio = { Haute: 0, Normale: 1, Basse: 2 };
   items.sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999') || (prio[a.priorite] ?? 1) - (prio[b.priorite] ?? 1));
-  const groups = ['À faire', 'En cours', 'Fait'];
+  const groups = ['À faire', 'En cours', 'À valider', 'Fait'];
+  const agentTodo = db.actions.filter(a => a.statut !== 'Fait' && a.statut !== 'À valider' && isAgentName(a.responsable) && !AGW.running.has(a.id));
   const who = ['Taoufik', ...db.agents.map(a => a.nom)];
   const person = n => n === 'Taoufik' ? TAOUFIK : (db.agents.find(a => a.nom === n) || { nom: n || '?', key: 'x', id: n });
   return `
@@ -453,6 +454,7 @@ VIEWS.actions = () => {
   <div class="toolbar">
     <input class="search" data-col="actions" placeholder="Rechercher…" value="${esc(st.q)}">
     <select id="act-who"><option value="">Responsable : tous</option>${who.map(n => `<option ${n === st.who ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    ${agentTodo.length ? `<button class="btn" data-agw-all ${AGW.running.size ? 'disabled' : ''}>🤖 Lancer le travail des agents (${agentTodo.length})</button>` : ''}
     <button class="btn primary" data-add="actions">+ Ajouter</button>
   </div>
   <div class="act-groups">${groups.map(g => {
@@ -461,14 +463,19 @@ VIEWS.actions = () => {
       <div class="act-head">${g} <span class="muted">(${list.length})</span></div>
       ${list.map(a => {
         const d = a.echeance ? daysUntil(a.echeance) : null;
-        return `<div class="act-item" data-edit="actions" data-id="${a.id}">
+        const ag = agentByName(a.responsable), running = AGW.running.has(a.id);
+        return `<div class="act-item ${running ? 'working' : ''}" data-act-open="${a.id}">
           <button class="act-check ${a.statut === 'Fait' ? 'on' : ''}" data-act-toggle="${a.id}" title="Marquer comme fait">${a.statut === 'Fait' ? '✓' : ''}</button>
           <div class="act-main"><div class="act-title">${esc(a.titre)}</div>
             <div class="act-meta">${avatar(person(a.responsable), 'xs')} ${esc(a.responsable || '')}
               ${a.echeance ? `<span class="badge ${a.statut !== 'Fait' && d < 0 ? 'red' : a.statut !== 'Fait' && d <= 3 ? 'orange' : ''}">${esc(fmtDate(a.echeance))}${a.statut !== 'Fait' && d < 0 ? ' · en retard' : ''}</span>` : ''}
               ${a.priorite === 'Haute' ? '<span class="badge red">priorité haute</span>' : ''}
               ${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}
-              ${a.source ? `<span class="muted small">${esc(a.source)}</span>` : ''}</div></div>
+              ${a.source ? `<span class="muted small">${esc(a.source)}</span>` : ''}</div>
+            ${ag && a.statut !== 'Fait' ? `<div class="act-agent">${running ? `<span class="agw-live">${esc(ag.nom)} travaille…</span>`
+              : a.travail ? `<span class="badge ${a.statut === 'À valider' ? 'orange' : 'blue'}">📋 ${a.statut === 'À valider' ? 'Rapport à valider' : 'Rapport disponible'}</span>`
+              : `<button class="btn small" data-agw-run="${a.id}">▶ ${esc(ag.nom)}, fais ce travail</button>`}</div>` : ''}
+            ${a.travail && a.statut === 'Fait' ? '<div class="act-agent"><span class="badge green">✓ travail validé</span></div>' : ''}</div>
         </div>`;
       }).join('') || '<div class="empty small">Rien ici.</div>'}
     </div>`;
@@ -709,20 +716,23 @@ function openActionsModal(id) {
           </div>
         </div>`).join('')}</div>
       <p class="muted small">Les actions non cochées sont mises de côté : tu pourras les reconsidérer plus tard dans la réunion.</p>
+      <label class="chk"><input type="checkbox" id="pam-run" checked> Les agents commencent tout de suite le travail qui leur est assigné</label>
       <div class="modal-actions"><button type="button" class="btn" data-close>Plus tard</button><span class="sp"></span><button class="btn primary" id="pam-go">Ajouter ${pending.length} action${pending.length > 1 ? 's' : ''}</button></div>
     </form>`);
   const count = () => { const n = $$('.pam-check:checked').length; $('#pam-go').textContent = n ? `Ajouter ${n} action${n > 1 ? 's' : ''}` : 'Ne rien ajouter'; };
   $('#pam-all').onchange = e => { $$('.pam-check').forEach(c => { c.checked = e.target.checked; }); count(); };
   $$('.pam-check').forEach(c => { c.onchange = count; });
   $('#pa-modal').onsubmit = e => {
-    e.preventDefault(); let added = 0;
+    e.preventDefault(); let added = 0; const created = [];
+    const runNow = $('#pam-run') && $('#pam-run').checked;
     $$('.pam-row').forEach(row => {
       const x = r.actionsProposees.find(y => y.id === row.dataset.id); if (!x) return;
       x.titre = $('.pam-title', row).value.trim() || x.titre;
       x.responsable = $('.pam-resp', row).value; x.echeance = $('.pam-date', row).value;
-      if ($('.pam-check', row).checked) { approveActionDirect(r, x); added++; } else x.statut = 'rejetée';
+      if ($('.pam-check', row).checked) { approveActionDirect(r, x); added++; created.push(x.actionId); } else x.statut = 'rejetée';
     });
     save(); closeModal(); render();
+    if (runNow) runAgentTasks(created.filter(id => { const a = db.actions.find(y => y.id === id); return a && isAgentName(a.responsable); }));
     toast(added ? `${added} action${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} à « Actions à faire » ✓` : 'Aucune action ajoutée');
   };
 }
@@ -746,4 +756,151 @@ document.addEventListener('click', e => {
   if (t.dataset.paModal) openActionsModal(t.dataset.paModal);
   else if (t.dataset.paExtract) extractActionsWithAI(t.dataset.paExtract);
   else if (t.dataset.paReview) openActionsModal(t.dataset.paReview);
+});
+
+/* =========================================================
+   TRAVAIL DES AGENTS sur les actions qui leur sont assignées
+   L'agent réalise la tâche (livrable) + rédige un court rapport.
+   Taoufik valide le travail ou demande une correction.
+   ========================================================= */
+const AGW = { running: new Set(), queue: [], error: {} };
+const agentByName = n => db.agents.find(a => a.nom === n);
+const isAgentName = n => !!agentByName(n);
+
+function taskContext(a) {
+  const parts = [];
+  const p = db.projets.find(x => x.nom === a.projet);
+  if (p) parts.push('PROJET :\n' + projectBrief(p));
+  const m = a.reunionId && getMeeting(a.reunionId);
+  if (m) parts.push(`RÉUNION D’ORIGINE : « ${m.titre} » (${m.date})\n${m.memo ? 'Décision clé : ' + m.memo + '\n' : ''}Compte rendu :\n${String(m.resultat || '').slice(0, 3000)}`);
+  return parts.join('\n\n');
+}
+
+function splitWork(text) {
+  const t = String(text || '');
+  const i = t.search(/^#{2,3}\s*Rapport de travail/mi);
+  const livrable = (i >= 0 ? t.slice(0, i) : t).replace(/^#{2,3}\s*Livrable\s*$/mi, '').trim();
+  const rapport = i >= 0 ? t.slice(i).replace(/^#{2,3}\s*Rapport de travail\s*$/mi, '').trim() : '';
+  const st = rapport.match(/statut proposé\s*:\s*\**\s*([^\n*]+)/i);
+  return { livrable, rapport, statutPropose: st ? st[1].trim() : '' };
+}
+
+async function runAgentTask(id, feedback = '') {
+  const a = db.actions.find(x => x.id === id); if (!a) return;
+  const ag = agentByName(a.responsable); if (!ag) return;
+  if (!(ag.model || db.provider.modeleDefaut)) { AGW.error[id] = 'Choisis d’abord un modèle (Fournisseur de tokens ou Réglages de l’agent).'; render(); return; }
+  AGW.running.add(id); delete AGW.error[id]; window.AI_BUSY = true;
+  a.statut = 'En cours'; save(); render(); refreshWorkModal(id);
+  const instr = `TÂCHE QUE TAOUFIK T’A ASSIGNÉE : « ${a.titre} »
+${a.echeance ? `Échéance : ${a.echeance}\n` : ''}${a.notes ? `Notes : ${a.notes}\n` : ''}${a.source ? `Origine : ${a.source}\n` : ''}
+Fais ce travail maintenant, complètement, dans ta réponse.
+Important : tu ne peux pas agir dans le monde réel (envoyer un courriel, appeler, payer, publier, signer, autoriser une dépense, accéder à un système). Prépare tout ce qui est possible (textes prêts à envoyer, calculs, procédures, modèles, listes de vérification) et dis clairement ce que Taoufik doit faire lui-même.
+N’invente aucun chiffre, nom ou fait : écris [À COMPLÉTER : …] quand une information manque.
+Réponds exactement avec ces deux sections :
+## Livrable
+(le travail complet, prêt à utiliser)
+## Rapport de travail
+- Ce que j’ai fait :
+- Hypothèses retenues :
+- Ce que Taoufik doit faire ou décider :
+- Statut proposé : Terminé / À valider par Taoufik / Bloqué (raison)`;
+  const msgs = [{ role: 'system', content: agentSystem(ag) }, { role: 'user', content: (taskContext(a) ? taskContext(a) + '\n\n' : '') + instr }];
+  if (feedback && a.travail) {
+    msgs.push({ role: 'assistant', content: a.travail.contenu });
+    msgs.push({ role: 'user', content: `Correction demandée par Taoufik : ${feedback}\nRefais le travail en tenant compte de sa remarque, avec les mêmes deux sections.` });
+  }
+  try {
+    const res = await callAgentApi('POST', '', { model: ag.model || db.provider.modeleDefaut, temperature: Math.min(0.5, ag.temperature ?? 0.5), max_tokens: 3000, messages: msgs });
+    const tokens = addUsage(ag, res.usage);
+    const x = db.actions.find(y => y.id === id);
+    if (x) {
+      const hist = x.travail ? [...(x.travail.historique || []), { date: x.travail.date, contenu: x.travail.contenu, feedback: x.travail.feedbackSuivant || '' }].slice(-5) : [];
+      x.travail = { contenu: res.content.trim(), ...splitWork(res.content), date: new Date().toISOString(), agentId: ag.id, tokens, version: (x.travail ? (x.travail.version || 1) + 1 : 1), historique: hist };
+      if (feedback && hist.length) hist[hist.length - 1].feedback = feedback;
+      x.statut = 'À valider';
+    }
+    save();
+    toast(`${ag.nom} a terminé : « ${a.titre.slice(0, 40)}${a.titre.length > 40 ? '…' : ''} » — rapport à valider`);
+  } catch (e) {
+    AGW.error[id] = e.message;
+    const x = db.actions.find(y => y.id === id); if (x && !x.travail) x.statut = 'À faire';
+    save();
+  }
+  AGW.running.delete(id); if (!AGW.running.size) window.AI_BUSY = false;
+  render(); refreshWorkModal(id);
+}
+
+async function runAgentTasks(ids) {
+  for (const id of ids) { if (!AGW.running.has(id)) await runAgentTask(id); }
+}
+
+/* ---------- Fenêtre de travail d'une action ---------- */
+let WORK_OPEN = null;
+function refreshWorkModal(id) { if (WORK_OPEN === id && !$('#modal-backdrop').classList.contains('hidden')) openWork(id); }
+
+function openActionPanel(id) {
+  const a = db.actions.find(x => x.id === id); if (!a) return;
+  if (isAgentName(a.responsable) || a.travail) openWork(id); else openForm('actions', id);
+}
+
+function openWork(id) {
+  const a = db.actions.find(x => x.id === id); if (!a) return;
+  WORK_OPEN = id;
+  const ag = agentByName(a.responsable) || (a.travail && agentById(a.travail.agentId)) || TAOUFIK;
+  const w = a.travail; const running = AGW.running.has(id); const err = AGW.error[id];
+  modal(`<div class="work-head">${avatar(ag, 'lg')}<div><div class="muted small">${esc(ag.nom)} · ${esc(ag.titre || '')}</div><h2>${esc(a.titre)}</h2>
+      <div class="act-meta">${badge(a.statut || 'À faire')}${a.echeance ? `<span class="badge">${esc(fmtDate(a.echeance))}</span>` : ''}${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}${w ? `<span class="muted small">version ${w.version || 1} · ${esc(fmtDate(String(w.date).slice(0, 10)))}${w.tokens ? ' · ' + w.tokens.toLocaleString('fr-CA') + ' tokens' : ''}</span>` : ''}</div></div></div>
+    ${err ? `<div class="ag-error">⚠ ${esc(err)}</div>` : ''}
+    ${running ? `<div class="work-running">${avatar(ag, 'sm')}<span>${esc(ag.nom)} travaille sur cette tâche…</span><span class="typing"><span></span><span></span><span></span></span></div>` : ''}
+    ${!w && !running ? `<p>${esc(ag.nom)} peut réaliser cette tâche et te remettre un livrable avec un court rapport de travail. Tu pourras ensuite le valider ou demander une correction.</p>
+      ${isAgentName(a.responsable) ? `<button class="btn primary" data-agw-run="${a.id}">▶ ${esc(ag.nom)}, fais ce travail</button>` : ''}` : ''}
+    ${w ? `
+      <div class="work-report"><h3>📋 Rapport de travail</h3>${w.rapport ? md(w.rapport) : '<p class="muted">Rapport non structuré : voir le livrable.</p>'}</div>
+      <details class="work-deliv" open><summary>📦 Livrable</summary><div class="report-body">${md(w.livrable || w.contenu)}</div></details>
+      ${a.statut !== 'Fait' && !running ? `
+      <form id="work-fb" class="work-fb"><textarea name="t" rows="2" placeholder="Demander une correction à ${esc(ag.nom)} : précise ce qui ne va pas ou ce qui manque…"></textarea><button class="btn">🔁 Demander une correction</button></form>` : ''}
+      <div class="modal-actions">
+        <button type="button" class="btn" data-work-note="${a.id}">📝 Note</button>
+        <button type="button" class="btn" data-work-print="${a.id}">🖨 PDF</button>
+        <button type="button" class="btn" data-work-copy="${a.id}">⧉ Copier le livrable</button>
+        <span class="sp"></span>
+        ${a.statut !== 'Fait' && !running ? `<button type="button" class="btn primary" data-work-ok="${a.id}">✅ Valider le travail</button>` : a.statut === 'Fait' ? '<span class="badge green">✓ Travail validé</span>' : ''}
+      </div>` : ''}
+    <div class="work-foot"><button type="button" class="linkbtn" data-work-edit="${a.id}">✏️ Modifier l’action (texte, responsable, échéance…)</button><button type="button" class="btn" data-close>Fermer</button></div>`);
+  const fb = $('#work-fb');
+  if (fb) fb.onsubmit = e => { e.preventDefault(); const v = e.target.elements.t.value.trim(); if (!v) return; runAgentTask(id, v); };
+}
+
+document.addEventListener('click', e => {
+  const open = e.target.closest('[data-act-open]');
+  const btn = e.target.closest('button');
+  if (btn && btn.dataset.agwRun) { e.stopPropagation(); runAgentTask(btn.dataset.agwRun); return; }
+  if (btn && 'agwAll' in btn.dataset) {
+    const ids = db.actions.filter(a => a.statut !== 'Fait' && a.statut !== 'À valider' && isAgentName(a.responsable)).map(a => a.id);
+    runAgentTasks(ids); return;
+  }
+  if (btn && btn.dataset.workOk) {
+    const a = db.actions.find(x => x.id === btn.dataset.workOk); if (!a) return;
+    a.statut = 'Fait'; a.faitLe = todayISO();
+    const ag = agentByName(a.responsable);
+    if (ag && a.travail) ag.memoire.push({ id: uid(), date: todayISO(), texte: `Tâche validée par Taoufik : « ${a.titre} ».` });
+    save(); render(); openWork(a.id); toast('Travail validé ✓'); return;
+  }
+  if (btn && btn.dataset.workEdit) { closeModal(); openForm('actions', btn.dataset.workEdit); return; }
+  if (btn && btn.dataset.workNote) {
+    const a = db.actions.find(x => x.id === btn.dataset.workNote);
+    if (a && a.travail) { db.notes.push({ id: uid(), titre: `${a.responsable} — ${a.titre}`.slice(0, 120), date: todayISO(), source: 'Agent IA', projet: a.projet || '', tags: 'travail agent', contenu: a.travail.contenu }); save(); toast('Enregistré dans Notes ✓'); }
+    return;
+  }
+  if (btn && btn.dataset.workPrint) {
+    const a = db.actions.find(x => x.id === btn.dataset.workPrint);
+    if (a && a.travail) printReport(`## ${a.titre}\n**Responsable :** ${a.responsable}${a.projet ? ' · **Projet :** ' + a.projet : ''}\n\n## Rapport de travail\n${a.travail.rapport || ''}\n\n## Livrable\n${a.travail.livrable || a.travail.contenu}`, agentByName(a.responsable) || {});
+    return;
+  }
+  if (btn && btn.dataset.workCopy) {
+    const a = db.actions.find(x => x.id === btn.dataset.workCopy);
+    if (a && a.travail) (navigator.clipboard ? navigator.clipboard.writeText(a.travail.livrable || a.travail.contenu) : Promise.reject()).then(() => toast('Copié ✓'), () => toast('Copie impossible : sélectionne le texte à la main.'));
+    return;
+  }
+  if (open && !btn && !$('#modal-backdrop').contains(open)) openActionPanel(open.dataset.actOpen);
 });

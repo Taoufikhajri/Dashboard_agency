@@ -347,7 +347,7 @@ document.addEventListener('click', e => { if (e.target.closest('[data-close]')) 
 function badge(v) {
   const map = {
     'En cours': 'blue', 'Prospect': 'blue', 'Actif (récurrent)': 'green', 'Fait': 'green', 'Terminé': 'green', 'Revenu': 'green', 'Vendue': 'green', 'Démo faite': 'green',
-    'En pause': '', 'À faire': 'orange', 'À vérifier': 'orange', 'Priorité': 'orange', 'Dépense': 'red', 'reMarkable': 'blue'
+    'En pause': '', 'À valider': 'orange', 'À faire': 'orange', 'À vérifier': 'orange', 'Priorité': 'orange', 'Dépense': 'red', 'reMarkable': 'blue'
   };
   return `<span class="badge ${map[v] ?? ''}">${esc(v)}</span>`;
 }

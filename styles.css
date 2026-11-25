@@ -442,6 +442,24 @@ body.locked .app { display: none; }
 .pam-sub { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .pam-sub select, .pam-sub input { width: auto; padding: 5px 8px; }
 
+/* Travail des agents */
+.act-agent { margin-top: 7px; }
+.act-item.working { box-shadow: 0 0 0 2px #9cc5b2, var(--shadow); }
+.agw-live { font-size: 12px; color: var(--accent); font-weight: 600; }
+.agw-live::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; animation: blink 1s infinite; }
+.work-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.work-head h2 { margin: 2px 0 6px; font-size: 19px; }
+.work-running { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); color: #24533f; font-weight: 500; margin: 10px 0; }
+.work-running .typing { padding: 0 !important; }
+.work-report { background: #f7f5f0; border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px 8px; margin: 10px 0; }
+.work-report h3 { margin: 10px 0 6px; font-size: 15px; }
+.work-deliv { border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; margin: 10px 0; max-height: 45vh; overflow-y: auto; }
+.work-deliv summary { cursor: pointer; font-weight: 600; font-family: var(--font-title); }
+.work-fb { display: flex; gap: 8px; align-items: flex-end; margin: 8px 0; }
+.work-fb textarea { min-height: 52px; }
+.work-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.modal:has(.work-head) { max-width: 820px; }
+
 /* =========== Rapport client =========== */
 .rc-card { border: 1px solid #e4d2c3; background: linear-gradient(180deg, #fbf7f2, #fff 140px); }
 .rc-gen { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
