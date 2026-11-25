@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tableau de bord — Agence IA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">◆</span>
+        <span id="brand-name">Mon agence IA</span>
+      </div>
+      <nav id="nav"></nav>
+      <div class="sidebar-foot">
+        <div id="timer-mini" class="timer-mini hidden"></div>
+        <button class="btn ghost" id="open-settings">⚙ Paramètres et sauvegarde</button>
+      </div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <h1 id="view-title">Tableau de bord</h1>
+        <div id="view-actions"></div>
+      </header>
+      <section id="view"></section>
+    </main>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true" id="modal"></div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <div id="print-area"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
