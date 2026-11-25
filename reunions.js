@@ -110,6 +110,8 @@ N’invente aucun chiffre ni aucun fait qui n’a pas été dit. Termine par une
     r.memo = memo ? memo[1].replace(/\*+$/, '').trim() : '';
     r.resultat = res.content.replace(/^\s*\**\s*MÉMO\s*:.*$/mi, '').trim();
     r.resultatPar = sec.id; r.statut = 'Terminée'; r.maj = new Date().toISOString();
+    const kept = (r.actionsProposees || []).filter(x => x.statut !== 'proposée');
+    r.actionsProposees = [...kept, ...parseActions(r.resultat).map(x => ({ id: uid(), ...x, statut: 'proposée' }))];
     save();
     toast('Compte rendu prêt ✓');
   } catch (e) {
@@ -226,7 +228,9 @@ function meetingView(r) {
           <button class="btn" data-rm-act="pdf">🖨 PDF (avec la discussion)</button>
           <button class="btn" data-rm-act="copier">⧉ Copier</button>
         </div>
-      </div>` : ''}
+      </div>
+      ${actionsApprovalCard(r)}
+      ${clientReportCard(r)}` : ''}
     </div>
     <div class="rm-right card">
       <h3>💬 La discussion</h3>
@@ -318,4 +322,273 @@ document.addEventListener('submit', e => {
 
 document.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('#rm-intervene') && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#rm-intervene').requestSubmit(); }
+});
+
+/* =========================================================
+   ACTIONS : extraites du plan d'action, approuvées par Taoufik
+   ========================================================= */
+SCHEMAS.actions = {
+  single: 'action', filter: 'statut',
+  cols: ['titre', 'responsable', 'statut', 'echeance', 'projet'],
+  fields: [
+    { k: 'titre', l: 'Action', t: 'text', req: true, full: true },
+    { k: 'responsable', l: 'Responsable', t: 'select', get o() { return ['Taoufik', ...db.agents.map(a => a.nom)]; }, def: 'Taoufik' },
+    { k: 'statut', l: 'Statut', t: 'select', o: ['À faire', 'En cours', 'Fait'], def: 'À faire' },
+    { k: 'priorite', l: 'Priorité', t: 'select', o: ['Haute', 'Normale', 'Basse'], def: 'Normale' },
+    { k: 'echeance', l: 'Échéance', t: 'date' },
+    { k: 'projet', l: 'Projet', t: 'projet' },
+    { k: 'source', l: 'Source', t: 'text', full: true },
+    { k: 'notes', l: 'Notes', t: 'textarea', full: true }
+  ]
+};
+NAV.splice(NAV.findIndex(n => n[0] === 'projets') + 1, 0, ['actions', 'Actions à faire', '✅']);
+
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+// Transforme « vendredi », « demain », « dans 2 semaines », « 2026-12-05 »… en date (ou '')
+function guessDate(txt) {
+  const s = String(txt || '').toLowerCase();
+  const iso = s.match(/\d{4}-\d{2}-\d{2}/); if (iso) return iso[0];
+  if (/aujourd/.test(s)) return todayISO();
+  if (/demain/.test(s)) return addDays(1);
+  const dans = s.match(/dans\s+(\d+)\s*(jour|semaine|mois)/);
+  if (dans) return addDays(Number(dans[1]) * (dans[2].startsWith('semaine') ? 7 : dans[2] === 'mois' ? 30 : 1));
+  if (/semaine prochaine/.test(s)) return addDays(7);
+  if (/cette semaine|fin de semaine/.test(s)) { const d = new Date(); return addDays((5 - d.getDay() + 7) % 7 || 0); }
+  if (/fin du mois/.test(s)) { const d = new Date(); return isoOf(new Date(d.getFullYear(), d.getMonth() + 1, 0)); }
+  const wd = WEEKDAYS.findIndex(w => s.includes(w));
+  if (wd >= 0) { const d = new Date(); return addDays(((wd - d.getDay() + 7) % 7) || 7); }
+  return '';
+}
+
+function matchResponsable(txt) {
+  const s = String(txt || '').toLowerCase();
+  const names = ['Taoufik', ...db.agents.map(a => a.nom)];
+  return names.find(n => s.includes(n.toLowerCase())) || 'Taoufik';
+}
+
+function parseActions(text) {
+  const sec = String(text || '').split(/^#{2,3}\s+/m).find(s => /^plan d[’']action/i.test(s.trim()));
+  if (!sec) return [];
+  const lines = sec.split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+  const out = [];
+  for (let l of lines) {
+    if (/^\|[\s:|-]+\|?$/.test(l)) continue;                         // séparateur de tableau
+    if (l.startsWith('|')) {                                            // ligne de tableau
+      const c = l.replace(/^\||\|$/g, '').split('|').map(x => x.replace(/\*\*/g, '').trim());
+      if (!c[0] || /^action$/i.test(c[0])) continue;
+      out.push({ titre: c[0], responsable: matchResponsable(c[1]), echeanceTexte: c[2] || '', echeance: guessDate(c[2]) });
+      continue;
+    }
+    if (!/^([-*•]|\d+[.)])\s+/.test(l)) continue;
+    l = l.replace(/^([-*•]|\d+[.)])\s+/, '').replace(/\*\*/g, '').trim();
+    const parts = l.split(/\s+[—–]\s+/).length > 1 ? l.split(/\s+[—–]\s+/) : l.split(/\s+-\s+/);
+    out.push({ titre: parts[0].trim(), responsable: matchResponsable(parts[1]), echeanceTexte: (parts.slice(2).join(' — ') || '').trim(), echeance: guessDate(parts.slice(2).join(' ')) });
+  }
+  return out.filter(x => x.titre).slice(0, 15);
+}
+
+function actionsApprovalCard(r) {
+  const list = r.actionsProposees || [];
+  if (!list.length) return '';
+  const pending = list.filter(x => x.statut === 'proposée');
+  const names = ['Taoufik', ...db.agents.map(a => a.nom)];
+  return `<div class="card pa-card">
+    <div class="rm-result-head"><h3>✅ Actions proposées</h3>${pending.length > 1 ? '<button class="btn small primary" data-pa-all>Tout approuver</button>' : ''}</div>
+    <p class="muted small">Vérifie, ajuste si besoin, puis approuve : l’action est ajoutée à « Actions à faire ».</p>
+    ${list.map(x => x.statut === 'proposée' ? `
+      <div class="pa-row" data-pa-row="${x.id}">
+        <input class="pa-title" value="${esc(x.titre)}">
+        <select class="pa-resp">${names.map(n => `<option ${n === x.responsable ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+        <input class="pa-date" type="date" value="${esc(x.echeance || '')}" title="${esc(x.echeanceTexte || '')}">
+        <button class="btn small ok" data-pa-ok="${x.id}" title="Approuver">✓ Approuver</button>
+        <button class="btn small" data-pa-no="${x.id}" title="Rejeter">✕</button>
+      </div>` : `
+      <div class="pa-row done ${x.statut === 'rejetée' ? 'rejected' : ''}">
+        <span>${x.statut === 'approuvée' ? '✅' : '⛔'} ${esc(x.titre)}</span>
+        <span class="muted small">${x.statut === 'approuvée' ? `ajoutée · ${esc(x.responsable)}${x.echeance ? ' · ' + esc(fmtDate(x.echeance)) : ''}` : 'rejetée'}</span>
+        ${x.statut === 'rejetée' ? `<button class="btn small" data-pa-undo="${x.id}">Reconsidérer</button>` : ''}
+      </div>`).join('')}
+  </div>`;
+}
+
+function approveAction(r, x) {
+  const row = $(`[data-pa-row="${x.id}"]`);
+  if (row) { x.titre = $('.pa-title', row).value.trim() || x.titre; x.responsable = $('.pa-resp', row).value; x.echeance = $('.pa-date', row).value; }
+  const a = { id: uid(), titre: x.titre, responsable: x.responsable, statut: 'À faire', priorite: 'Normale', echeance: x.echeance || '', projet: r.projet || '', source: `Réunion « ${r.titre} » du ${r.date}`, reunionId: r.id, notes: x.echeanceTexte ? `Échéance proposée : ${x.echeanceTexte}` : '' };
+  db.actions.push(a); x.statut = 'approuvée'; x.actionId = a.id;
+}
+
+function pendingProposals() {
+  return db.reunions.flatMap(r => (r.actionsProposees || []).filter(x => x.statut === 'proposée').map(x => ({ r, x })));
+}
+
+VIEWS.actions = () => {
+  const st = ui.actions || (ui.actions = { q: '', f: '', who: '' });
+  const pend = pendingProposals();
+  const byMeeting = [...new Set(pend.map(p => p.r.id))].map(id => getMeeting(id));
+  let items = db.actions.filter(a => !st.q || Object.values(a).join(' ').toLowerCase().includes(st.q.toLowerCase()))
+    .filter(a => !st.who || a.responsable === st.who);
+  const prio = { Haute: 0, Normale: 1, Basse: 2 };
+  items.sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999') || (prio[a.priorite] ?? 1) - (prio[b.priorite] ?? 1));
+  const groups = ['À faire', 'En cours', 'Fait'];
+  const who = ['Taoufik', ...db.agents.map(a => a.nom)];
+  const person = n => n === 'Taoufik' ? TAOUFIK : (db.agents.find(a => a.nom === n) || { nom: n || '?', key: 'x', id: n });
+  return `
+  ${byMeeting.length ? `<div class="info">🕓 ${pend.length} action${pend.length > 1 ? 's' : ''} proposée${pend.length > 1 ? 's' : ''} en attente d’approbation : ${byMeeting.map(m => `<button class="linkbtn inline" data-rm-goto="${m.id}">${esc(m.titre)}</button>`).join(', ')}</div>` : ''}
+  <div class="toolbar">
+    <input class="search" data-col="actions" placeholder="Rechercher…" value="${esc(st.q)}">
+    <select id="act-who"><option value="">Responsable : tous</option>${who.map(n => `<option ${n === st.who ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    <button class="btn primary" data-add="actions">+ Ajouter</button>
+  </div>
+  <div class="act-groups">${groups.map(g => {
+    const list = items.filter(a => (a.statut || 'À faire') === g);
+    return `<div class="act-group ${g === 'Fait' ? 'is-done' : ''}">
+      <div class="act-head">${g} <span class="muted">(${list.length})</span></div>
+      ${list.map(a => {
+        const d = a.echeance ? daysUntil(a.echeance) : null;
+        return `<div class="act-item" data-edit="actions" data-id="${a.id}">
+          <button class="act-check ${a.statut === 'Fait' ? 'on' : ''}" data-act-toggle="${a.id}" title="Marquer comme fait">${a.statut === 'Fait' ? '✓' : ''}</button>
+          <div class="act-main"><div class="act-title">${esc(a.titre)}</div>
+            <div class="act-meta">${avatar(person(a.responsable), 'xs')} ${esc(a.responsable || '')}
+              ${a.echeance ? `<span class="badge ${a.statut !== 'Fait' && d < 0 ? 'red' : a.statut !== 'Fait' && d <= 3 ? 'orange' : ''}">${esc(fmtDate(a.echeance))}${a.statut !== 'Fait' && d < 0 ? ' · en retard' : ''}</span>` : ''}
+              ${a.priorite === 'Haute' ? '<span class="badge red">priorité haute</span>' : ''}
+              ${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}
+              ${a.source ? `<span class="muted small">${esc(a.source)}</span>` : ''}</div></div>
+        </div>`;
+      }).join('') || '<div class="empty small">Rien ici.</div>'}
+    </div>`;
+  }).join('')}</div>`;
+};
+
+/* =========================================================
+   RAPPORT CLIENT OFFICIEL (à partir d'une réunion)
+   ========================================================= */
+const RC = { busyId: null, error: '' };
+
+function clientReportCard(r) {
+  const rc = r.rapportClient;
+  const busy = RC.busyId === r.id;
+  return `<div class="card rc-card">
+    <div class="rm-result-head"><h3>📄 Rapport client officiel</h3>
+      ${rc ? `<span class="muted small">généré le ${esc(fmtDate(rc.date))}</span>` : ''}</div>
+    ${!rc ? `<p class="muted">Transforme cette réunion en rapport professionnel pour ton client, aux couleurs de <b>${esc(db.marque.nom || 'Stony Automation')}</b> : page couverture, résumé exécutif, analyse, recommandations priorisées, plan de mise en œuvre et prochaines étapes. La discussion interne et les prénoms des agents n’y apparaissent pas.</p>
+      <div class="rc-gen"><label>Nom du client<input id="rc-client" value="${esc((db.projets.find(p => p.id === r.projetId) || {}).client || '')}" placeholder="ex. Usinage Deux Rives inc."></label>
+      <button class="btn primary" data-rc-gen="${r.id}" ${busy || RM.running ? 'disabled' : ''}>${busy ? 'Rédaction en cours…' : '✨ Générer le rapport client'}</button></div>`
+    : `<div class="rc-preview report-body">${md(rc.contenu.slice(0, 1800))}${rc.contenu.length > 1800 ? '<p class="muted">… (suite dans le PDF)</p>' : ''}</div>
+      <div class="rm-actions">
+        <button class="btn primary" data-rc-print="${r.id}">🖨 PDF officiel</button>
+        <button class="btn" data-rc-edit="${r.id}">✏️ Modifier</button>
+        <button class="btn" data-rc-note="${r.id}">📝 Enregistrer dans Notes</button>
+        <button class="btn" data-rc-gen="${r.id}" ${busy || RM.running ? 'disabled' : ''}>${busy ? 'Rédaction…' : '🔄 Régénérer'}</button>
+      </div>`}
+    ${RC.error && busy === false && RC.lastId === r.id ? `<div class="ag-error">⚠ ${esc(RC.error)}</div>` : ''}
+  </div>`;
+}
+
+async function generateClientReport(id) {
+  const r = getMeeting(id); if (!r || RC.busyId) return;
+  const sec = agentById(r.secretaire) && r.secretaire !== 'taoufik' ? agentById(r.secretaire) : (db.agents.find(a => a.key === 'rapports') || db.agents[0]);
+  const client = ($('#rc-client') && $('#rc-client').value.trim()) || (r.rapportClient && r.rapportClient.client) || '';
+  if (!(sec.model || db.provider.modeleDefaut)) { RC.error = 'Choisis d’abord un modèle par défaut dans « Fournisseur de tokens ».'; RC.lastId = id; render(); return; }
+  RC.busyId = id; RC.error = ''; RC.lastId = id; window.AI_BUSY = true; render();
+  const brand = db.marque.nom || 'Stony Automation';
+  const instr = `Rédige maintenant un RAPPORT OFFICIEL destiné au client${client ? ` « ${client} »` : ''}, au nom de ${brand}.
+Règles :
+- Vouvoiement, ton professionnel, français québécois clair. Phrases courtes, pas de jargon.
+- Ne mentionne JAMAIS la réunion interne, les agents, leurs prénoms ni « l’équipe IA » : l’analyse est présentée comme celle de ${brand}.
+- N’invente aucun chiffre, aucun nom, aucun résultat : quand une donnée manque, écris [À COMPLÉTER : …].
+- Analyse claire : pour chaque constat, explique la cause et l’impact pour l’entreprise.
+Structure exacte (Markdown) :
+## Résumé exécutif
+(4 à 6 phrases : situation, enjeu principal, recommandation clé, bénéfice attendu)
+## Contexte et objectifs
+## Analyse de la situation
+### Constats
+### Opportunités
+### Risques
+## Recommandations
+(un tableau Markdown : | Priorité | Recommandation | Impact attendu | Effort |)
+## Plan de mise en œuvre
+(étapes numérotées avec durée estimée)
+## Investissement et retour sur investissement
+(méthode de calcul ; utilise [À COMPLÉTER] pour les montants inconnus)
+## Prochaines étapes
+Ne mets pas de titre principal ni de signature : ils sont ajoutés automatiquement.`;
+  try {
+    const res = await callAgentApi('POST', '', {
+      model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 3500,
+      messages: [{ role: 'system', content: agentSystem(sec) },
+        { role: 'user', content: `${meetingBrief(r)}\n\nTRANSCRIPTION :\n${transcriptText(r)}\n\nCOMPTE RENDU INTERNE :\n${r.resultat}\n\n${instr}` }]
+    });
+    addUsage(sec, res.usage);
+    const m = getMeeting(id);
+    m.rapportClient = { contenu: res.content.trim(), date: todayISO(), client, titre: m.projet ? `${m.projet}` : m.titre, par: sec.id };
+    save(); toast('Rapport client prêt ✓');
+  } catch (e) { RC.error = e.message; }
+  RC.busyId = null; window.AI_BUSY = false; render();
+}
+
+function editClientReport(id) {
+  const r = getMeeting(id); if (!r || !r.rapportClient) return;
+  const rc = r.rapportClient;
+  modal(`<h2>Modifier le rapport client</h2>
+    <form id="rc-f">
+      <label>Titre du rapport<input name="titre" value="${esc(rc.titre || '')}"></label>
+      <label>Client<input name="client" value="${esc(rc.client || '')}"></label>
+      <label>Contenu (Markdown : ## titres, - listes, | tableaux |, **gras**)<textarea name="contenu" style="min-height:380px;font-family:ui-monospace,monospace;font-size:12.5px">${esc(rc.contenu)}</textarea></label>
+      <div class="modal-actions"><span class="sp"></span><button type="button" class="btn" data-close>Annuler</button><button class="btn primary">Enregistrer</button></div>
+    </form>`);
+  $('#rc-f').onsubmit = e => {
+    e.preventDefault(); const el = e.target.elements;
+    rc.titre = el.titre.value.trim(); rc.client = el.client.value.trim(); rc.contenu = el.contenu.value;
+    save(); closeModal(); render(); toast('Rapport enregistré ✓');
+  };
+}
+
+/* ---------- Section : Rapports clients ---------- */
+NAV.splice(NAV.findIndex(n => n[0] === 'reunions') + 1, 0, ['rapports', 'Rapports clients', '📄']);
+VIEWS.rapports = () => {
+  const list = db.reunions.filter(r => r.rapportClient).sort((a, b) => (b.rapportClient.date || '').localeCompare(a.rapportClient.date || ''));
+  return `
+  <div class="info">Un rapport client se crée à partir d’une réunion terminée : ouvre la réunion, puis clique sur <b>✨ Générer le rapport client</b>.</div>
+  <div class="rm-list">${list.map(r => `
+    <div class="rm-card rc-list-card">
+      <div class="rc-mini-cover">${logoSVG(28, true)}<span>${esc(r.rapportClient.titre || r.titre)}</span></div>
+      <b>${esc(r.rapportClient.client || 'Client non précisé')}</b>
+      <div class="muted small">${esc(fmtDate(r.rapportClient.date))} · réunion « ${esc(r.titre)} »</div>
+      <div class="rm-actions" style="border:0;padding:0;margin-top:6px">
+        <button class="btn small primary" data-rc-print="${r.id}">🖨 PDF</button>
+        <button class="btn small" data-rc-edit="${r.id}">✏️ Modifier</button>
+        <button class="btn small" data-rm-goto="${r.id}">Ouvrir la réunion</button>
+      </div>
+    </div>`).join('') || '<div class="empty card">Aucun rapport client pour l’instant.</div>'}</div>`;
+};
+
+/* ---------- Événements (actions + rapports) ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t || $('#modal-backdrop').contains(t)) return;
+  const d = t.dataset;
+  if (d.actToggle) {
+    e.stopPropagation();
+    const a = db.actions.find(x => x.id === d.actToggle);
+    if (a) { a.statut = a.statut === 'Fait' ? 'À faire' : 'Fait'; if (a.statut === 'Fait') a.faitLe = todayISO(); save(); render(); toast(a.statut === 'Fait' ? 'Bravo, action terminée ✓' : 'Action rouverte'); }
+    return;
+  }
+  if (d.rmGoto) { RM.view = 'meeting'; RM.id = d.rmGoto; location.hash = 'reunions'; render(); return; }
+  const r = getMeeting(RM.id);
+  if (d.paOk && r) { const x = r.actionsProposees.find(y => y.id === d.paOk); if (x) { approveAction(r, x); save(); render(); toast('Action ajoutée à « Actions à faire » ✓'); } }
+  else if (d.paNo && r) { const x = r.actionsProposees.find(y => y.id === d.paNo); if (x) { x.statut = 'rejetée'; save(); render(); } }
+  else if (d.paUndo && r) { const x = r.actionsProposees.find(y => y.id === d.paUndo); if (x) { x.statut = 'proposée'; save(); render(); } }
+  else if ('paAll' in d && r) { const n = r.actionsProposees.filter(y => y.statut === 'proposée'); n.forEach(x => approveAction(r, x)); save(); render(); toast(`${n.length} actions ajoutées ✓`); }
+  else if (d.rcGen) generateClientReport(d.rcGen);
+  else if (d.rcPrint) { const m = getMeeting(d.rcPrint); if (m) printClientReport(m); }
+  else if (d.rcEdit) editClientReport(d.rcEdit);
+  else if (d.rcNote) {
+    const m = getMeeting(d.rcNote);
+    if (m && m.rapportClient) { db.notes.push({ id: uid(), titre: `Rapport client — ${m.rapportClient.client || m.titre}`.slice(0, 120), date: todayISO(), source: 'Agent IA', projet: m.projet || '', tags: 'rapport client', contenu: m.rapportClient.contenu }); save(); toast('Enregistré dans Notes ✓'); }
+  }
+}, true);
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'act-who') { (ui.actions || (ui.actions = { q: '', f: '', who: '' })).who = e.target.value; render(); }
 });

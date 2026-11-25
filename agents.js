@@ -95,12 +95,20 @@ function ensureAgentData(d) {
     if (a.titre === undefined) a.titre = a.role || '';
   });
   d.reunions = Array.isArray(d.reunions) ? d.reunions : [];
+  d.actions = Array.isArray(d.actions) ? d.actions : [];
+  // Marque Stony Automation (sans écraser un nom personnalisé)
+  if (d.settings && (!d.settings.agence || d.settings.agence === 'Mon agence IA')) d.settings.agence = 'Stony Automation';
   d.provider = {
     nom: 'Yonsepo', site: 'https://yonsepo.tech/', baseUrl: 'https://yonsepo.tech/v1',
     modeleDefaut: '', budgetMensuel: 0, modeles: [], dernierTest: null,
     ...(d.provider || {})
   };
   d.marque = { nom: '', slogan: '', ton: 'Professionnel, chaleureux, concret', couleurs: '', structure: '', signature: '', ...(d.marque || {}) };
+  if (!d.marque.nom) d.marque.nom = 'Stony Automation';
+  if (!d.marque.slogan) d.marque.slogan = 'L’automatisation solide pour les PME du Québec';
+  if (!d.marque.couleurs) d.marque.couleurs = 'Palette « Pierre » : ardoise #1F2933, granit #52606D, galet #E4DED4, mousse #2F6F57 (accent), cuivre #B86B3A';
+  if (!d.marque.ton || d.marque.ton === 'Professionnel, chaleureux, concret') d.marque.ton = 'Solide, concret, local : promesses mesurables, sans jargon, français québécois professionnel';
+  if (!d.marque.signature) d.marque.signature = 'Taoufik — Fondateur, Stony Automation\nTrois-Rivières, Québec';
   return d;
 }
 ensureAgentData(db);
@@ -123,7 +131,15 @@ function md(s) {
     h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>');
     h = h.replace(/(?:^[-*•] .*(?:\n|$))+/gm, m => '<ul>' + m.trim().split('\n').map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>');
     h = h.replace(/(?:^\d+[.)] .*(?:\n|$))+/gm, m => '<ol>' + m.trim().split('\n').map(l => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>');
-    h = h.replace(/(<\/h[34]>|<\/ul>|<\/ol>)\n+/g, '$1');
+    h = h.replace(/(?:^\|.*(?:\n|$))+/gm, block => {
+      const rows = block.trim().split('\n').filter(l => !/^\|[\s:|-]+\|?\s*$/.test(l));
+      if (!rows.length) return block;
+      const cells = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      const [head, ...body] = rows;
+      return '<table class="mdt"><thead><tr>' + cells(head).map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>' +
+        body.map(r => '<tr>' + cells(r).map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>\n';
+    });
+    h = h.replace(/(<\/h[34]>|<\/ul>|<\/ol>|<\/table>)\n+/g, '$1');
     h = h.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
     return h;
   }).join('');

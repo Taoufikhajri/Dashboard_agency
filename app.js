@@ -138,7 +138,7 @@ const SCHEMAS = {
 const field = (col, k) => SCHEMAS[col].fields.find(f => f.k === k);
 
 const DEFAULT_SETTINGS = {
-  agence: 'Mon agence IA',
+  agence: 'Stony Automation',
   objectifHeures: 14,
   budgetInitial: 4100,
   revenuCible: 3000,
@@ -473,6 +473,7 @@ function deadlines() {
   const out = [];
   db.projets.filter(p => p.echeance && !['Terminé', 'En pause'].includes(p.statut)).forEach(p => out.push({ date: p.echeance, label: p.nom, kind: 'Projet', col: 'projets', id: p.id }));
   db.juridique.filter(j => j.echeance && j.statut !== 'Fait').forEach(j => out.push({ date: j.echeance, label: j.tache, kind: 'Juridique', col: 'juridique', id: j.id }));
+  (db.actions || []).filter(x => x.echeance && x.statut !== 'Fait').forEach(x => out.push({ date: x.echeance, label: `${x.titre}${x.responsable ? ' (' + x.responsable + ')' : ''}`, kind: 'Action', col: 'actions', id: x.id }));
   return out.filter(x => daysUntil(x.date) <= 30).sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -659,7 +660,13 @@ function openPrintMenu() {
   $('#pr-ideas').onclick = () => { closeModal(); printIdeas(); };
 }
 
-function printHTML(html) { $('#print-area').innerHTML = html; setTimeout(() => window.print(), 50); }
+// size : 'A5' (reMarkable) ou 'Letter' (rapports clients)
+function printHTML(html, size = 'A5') {
+  let st = $('#page-size'); if (!st) { st = document.createElement('style'); st.id = 'page-size'; document.head.appendChild(st); }
+  st.textContent = size === 'Letter' ? '@page { size: Letter; margin: 16mm 18mm; }' : '@page { size: A5; margin: 12mm; }';
+  $('#print-area').className = 'size-' + size;
+  $('#print-area').innerHTML = html; setTimeout(() => window.print(), 50);
+}
 window.addEventListener('afterprint', () => { $('#print-area').innerHTML = ''; });
 const lines = n => `<div class="lines">${'<div class="ln"></div>'.repeat(n)}</div>`;
 
@@ -816,6 +823,7 @@ function render() {
     : '';
   $('#view').innerHTML = VIEWS[v]();
   tick();
+  if (typeof applyBrandChrome === 'function') applyBrandChrome(); // brand.js
 }
 
 window.addEventListener('hashchange', render);

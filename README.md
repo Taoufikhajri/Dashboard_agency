@@ -1,4 +1,6 @@
-# Tableau de bord — Agence IA
+# Stony Automation — Tableau de bord
+
+*L’automatisation solide pour les PME du Québec.*
 
 Une application web pour gérer ton agence : projets, temps, finances, juridique, formation, ressources, notes (avec ta reMarkable 2) et banque d'idées d'automatisation.
 
@@ -13,6 +15,8 @@ Elle inclut :
 | `supabase.sql` | Le code qui crée la table de données (à copier dans Supabase) |
 | `agents.js` | Les agents IA et le fournisseur de tokens |
 | `api/agent.js` | La fonction serveur qui parle au fournisseur de tokens (garde ta clé secrète) |
+| `reunions.js` | Réunions d'équipe, actions à approuver, rapports clients |
+| `brand.js` | Marque Stony Automation : logo, charte graphique, mise en page des PDF |
 | `vercel.json` | Un réglage de Vercel pour la fonction serveur |
 | `supabase-cle-api.sql` | Le code qui permet de gérer la clé API depuis le tableau de bord |
 
@@ -202,5 +206,9 @@ Ensuite, **redéploie** : onglet **Deployments**, bouton **⋯** sur le dernier 
 | Idées d'automatisation | Ta banque de 16 idées, classées par priorité |
 | Agents IA | 4 agents spécialisés avec leurs discussions et leur mémoire |
 | Fournisseur de tokens | La configuration de Yonsepo, le test de connexion et la consommation de tokens par agent |
+| Actions à faire | Les actions approuvées après les réunions (responsable, échéance, statut) |
+| Réunions d'équipe | Yahya, Ines, Jouri et Yaman discutent d'un projet posé sur la table, puis remettent un compte rendu |
+| Rapports clients | Les rapports officiels aux couleurs de Stony Automation, avec page couverture, en PDF format Lettre |
+| Charte graphique | Le logo (un cairn), la palette « Pierre », les polices et le ton de la marque |
 
 > Les rappels juridiques et fiscaux ne sont pas un avis professionnel. Fais-les vérifier par un comptable ou un avocat.
