@@ -208,13 +208,14 @@ function seed() {
       ['Accueil des nouveaux employés', 'Admin PME', '⭐⭐', 'Banque d’idées', 16, 'Documents, formation et liste de vérification envoyés automatiquement.']
     ].map(([titre, niche, difficulte, statut, priorite, description]) => ({ id: uid(), titre, niche, difficulte, statut, priorite, description }))
   };
-  return db;
+  return migrate(db);
 }
 
 /* ---------- Stockage ---------- */
 function migrate(d) {
   for (const k of Object.keys(SCHEMAS)) if (!Array.isArray(d[k])) d[k] = [];
   d.settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}) };
+  if (typeof ensureAgentData === 'function') ensureAgentData(d); // agents.js
   return d;
 }
 let storageKey = KEY; // devient « KEY:idUtilisateur » une fois connecté
@@ -251,7 +252,18 @@ const Cloud = {
     this.client = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
     return true;
   },
-  status(text, cls = '') { const el = $('#sync-status'); if (el) { el.textContent = text; el.className = 'sync ' + cls; } },
+  lastError: '',
+  status(text, cls = '') {
+    const el = $('#sync-status'); if (!el) return;
+    el.textContent = text + (cls === 'err' ? ' (détails)' : '');
+    el.className = 'sync ' + cls; el.style.cursor = cls === 'err' ? 'pointer' : '';
+    if (cls !== 'err') this.lastError = '';
+  },
+  fail(text, err) {
+    this.lastError = describeError(err);
+    console.error('[Synchro]', err);
+    this.status(text, 'err');
+  },
   queueSave() {
     if (!this.user) return;
     this.dirty = true;
@@ -271,7 +283,7 @@ const Cloud = {
     this.saving = false;
     if (error) {
       this.dirty = true;
-      this.status('⚠ Pas synchronisé — nouvel essai bientôt', 'err');
+      this.fail('⚠ Pas synchronisé — nouvel essai bientôt', error);
       clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 10000);
       return false;
     }
@@ -916,7 +928,7 @@ async function afterLogin(user) {
     await Cloud.sync(true);
   } catch (e) {
     Cloud.ready = false;
-    Cloud.status('⚠ Hors ligne — données de cet appareil', 'err');
+    Cloud.fail('⚠ Hors ligne — données de cet appareil', e);
   }
   render();
 }
@@ -947,6 +959,32 @@ async function refreshFromCloud() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromCloud(); });
 window.addEventListener('online', refreshFromCloud);
 
+/* ---------- Détails des erreurs de synchronisation ---------- */
+function describeError(err) {
+  if (!err) return 'Erreur inconnue.';
+  const msg = [err.message, err.details, err.hint, err.code].filter(Boolean).join(' — ') || String(err);
+  let tip = '';
+  if (/agence_data|PGRST205|42P01|does not exist|schema cache/i.test(msg)) tip = 'La table « agence_data » est introuvable : exécute le fichier supabase.sql dans Supabase (SQL Editor → New query → Run), puis clique sur Réessayer.';
+  else if (/row-level security|42501|permission denied/i.test(msg)) tip = 'Les règles de sécurité bloquent l’accès : exécute de nouveau tout le fichier supabase.sql.';
+  else if (/JWT|apikey|api key|401|Invalid API/i.test(msg)) tip = 'Clé ou adresse Supabase incorrecte dans config.js : recopie la Project URL et la clé publishable.';
+  else if (/fetch|network|Failed to/i.test(msg)) tip = 'Pas de connexion Internet, ou le projet Supabase est en pause (réactive-le dans Supabase).';
+  return { msg, tip };
+}
+function showSyncError() {
+  const e = Cloud.lastError; if (!e) return;
+  modal(`<h2>Problème de synchronisation</h2>
+    ${e.tip ? `<div class="info">${esc(e.tip)}</div>` : ''}
+    <p class="muted">Message technique (à m’envoyer si besoin) :</p>
+    <pre style="white-space:pre-wrap;background:#f6f7f9;padding:10px;border-radius:8px;font-size:12px">${esc(e.msg)}</pre>
+    <div class="modal-actions"><span class="sp"></span><button class="btn" data-close>Fermer</button><button class="btn primary" id="retry-sync">↻ Réessayer</button></div>`);
+  $('#retry-sync').onclick = async () => {
+    closeModal(); Cloud.status('Connexion…', 'busy');
+    try { await Cloud.sync(!Cloud.ready); render(); if (Cloud.dirty) Cloud.queueSave(); toast('Synchronisé ✓'); }
+    catch (err) { Cloud.fail('⚠ Hors ligne — données de cet appareil', err); showSyncError(); }
+  };
+}
+$('#sync-status').addEventListener('click', showSyncError);
+
 /* ---------- Démarrage ---------- */
 async function start() {
   if (!Cloud.configured) {
@@ -972,4 +1010,5 @@ async function start() {
   else showAuth('login-form');
 }
 
-start();
+// Démarre quand tous les scripts (dont agents.js) sont chargés
+window.addEventListener('DOMContentLoaded', start);

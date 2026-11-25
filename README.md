@@ -11,6 +11,10 @@ Elle inclut :
 | `index.html`, `styles.css`, `app.js` | L'application |
 | `config.js` | **Le seul fichier à modifier** : les 2 clés de ta base de données |
 | `supabase.sql` | Le code qui crée la table de données (à copier dans Supabase) |
+| `agents.js` | Les agents IA et le fournisseur de tokens |
+| `api/agent.js` | La fonction serveur qui parle au fournisseur de tokens (garde ta clé secrète) |
+| `vercel.json` | Un réglage de Vercel pour la fonction serveur |
+| `supabase-cle-api.sql` | Le code qui permet de gérer la clé API depuis le tableau de bord |
 
 Il n'y a **rien à installer et rien à compiler**.
 
@@ -79,10 +83,12 @@ window.AGENCE_CONFIG = {
 1. Va sur <https://github.com>. En haut à droite, clique sur **+**, puis **New repository**.
 2. Nom : `agence-dashboard`. Choisis **Private**, puis clique sur **Create repository**.
 3. Clique sur le lien **uploading an existing file**.
-4. Glisse **tous** les fichiers du dossier : `index.html`, `styles.css`, `app.js`, `config.js`, `supabase.sql` et `README.md`.
+4. Glisse **tout le contenu** du dossier, **y compris le dossier `api`** (avec `agent.js` dedans). Si GitHub n'accepte pas le dossier, voir l'encadré plus bas.
 5. Clique sur **Commit changes**.
 
 *(Si tu as déjà un dépôt, utilise **Add file → Upload files** pour remplacer les anciens fichiers.)*
+
+> **Le dossier `api` n'apparaît pas sur GitHub ?** Sur la page du dépôt, clique sur **Add file → Create new file**. Dans le nom, tape `api/agent.js` : la barre oblique crée le dossier. Colle le contenu du fichier `api/agent.js`, puis clique sur **Commit changes**.
 
 ## Étape 5 — Mettre le site en ligne (Vercel)
 
@@ -122,6 +128,51 @@ Sans cette étape, le lien « mot de passe oublié » ne ramènera pas au bon en
 
 ---
 
+## Étape 7 — Agents IA et fournisseur de tokens (Yonsepo)
+
+Les 4 agents (marketing, finances Québec, technique, rapports) passent par la fonction serveur `api/agent.js`.
+**Ta clé Yonsepo se change directement dans le tableau de bord** (🔑 Fournisseur de tokens). Elle est gardée dans ta base Supabase, dans une table que le navigateur ne peut **pas** relire. Seule la fonction serveur l'utilise, et seulement pour une personne connectée.
+
+### A. Dans Supabase (une seule fois)
+1. **SQL Editor → New query**. Colle **tout** le fichier `supabase-cle-api.sql`, puis clique sur **Run**. Tu dois voir « Success ».
+2. Va dans **Project Settings → API Keys** (ou **API**) et copie la clé **`service_role`** ou **`secret`** (elle commence souvent par `sb_secret_…` ou `eyJ…`).
+   ⛔ Cette clé donne tous les droits : elle va **seulement dans Vercel**, jamais dans `config.js` ni sur GitHub.
+
+### B. Dans Vercel (une seule fois)
+Ouvre ton projet, puis **Settings → Environment Variables**. Ajoute ces variables, en cliquant sur **Save** après chacune :
+
+| Nom (Key) | Valeur (Value) |
+|---|---|
+| `SUPABASE_URL` | la même adresse que `supabaseUrl` dans `config.js` |
+| `SUPABASE_ANON_KEY` | la même clé que `supabaseAnonKey` dans `config.js` |
+| `SUPABASE_SERVICE_ROLE_KEY` | la clé `service_role` ou `secret` copiée au point A.2 |
+
+Ensuite, **redéploie** : onglet **Deployments**, bouton **⋯** sur le dernier déploiement, puis **Redeploy**.
+
+*(Facultatif : `PROVIDER_API_KEY` et `PROVIDER_BASE_URL` servent de clé et d'adresse de secours si aucune clé n'est enregistrée dans le tableau de bord.)*
+
+### C. Dans le tableau de bord (chaque fois que tu changes de clé)
+1. Ouvre **🔑 Fournisseur de tokens**.
+2. Vérifie l'**Adresse de l'API**. Par défaut, c'est `https://yonsepo.tech/v1`. Je n'ai pas trouvé de documentation publique pour Yonsepo : **confirme cette adresse dans ton compte Yonsepo**. Clique sur **Enregistrer**.
+3. Dans la carte **🔒 Clé API**, colle ta clé Yonsepo, puis clique sur **Enregistrer la clé**. Tu dois voir « ✅ Clé enregistrée : ••••xxxx ».
+4. Clique sur **🔌 Tester la connexion et charger les modèles**, puis choisis un **modèle par défaut**.
+5. Ouvre **🤖 Agents IA** et pose ta première question.
+
+**Pour changer de clé plus tard :** recommence seulement le point C.3, puis C.4. Pas besoin de toucher à Vercel ni à GitHub.
+
+**La mémoire des agents :**
+- Chaque agent garde **toutes ses discussions**, enregistrées dans ta base de données.
+- Sa **mémoire** est relue au début de chaque discussion. Tu l'alimentes avec **📌 Mémoire** sur une réponse, **🧠 Résumer en mémoire** à la fin d'une discussion, ou à la main dans l'onglet Mémoire.
+- Sur chaque réponse : **📝 Note** l'enregistre dans tes notes, **🖨 PDF** crée un rapport avec ta marque, imprimable ou à envoyer vers la reMarkable.
+- Le **Rédacteur de rapports** utilise ton **profil de marque**, que tu remplis dans son onglet Réglages.
+- Tu peux modifier les instructions de chaque agent (onglet Réglages) et créer d'autres agents.
+
+> ⚠️ Les messages et le contexte (projets, chiffres) sont envoyés au fournisseur de tokens. Ne colle pas de renseignements personnels de tes clients (Loi 25). L'agent finances ne remplace pas un comptable.
+
+> Les agents ne marchent qu'en ligne (sur ton adresse Vercel, connecté). Ils ne fonctionnent pas en ouvrant `index.html` directement sur ton ordinateur.
+
+---
+
 ## Utiliser ta reMarkable 2
 
 **Du tableau de bord vers la reMarkable**
@@ -149,5 +200,7 @@ Sans cette étape, le lien « mot de passe oublié » ne ramènera pas au bon en
 | Ressources | Les outils, les organismes, les contacts et les lectures |
 | Notes et reMarkable | Les notes, l'import et l'impression pour la tablette |
 | Idées d'automatisation | Ta banque de 16 idées, classées par priorité |
+| Agents IA | 4 agents spécialisés avec leurs discussions et leur mémoire |
+| Fournisseur de tokens | La configuration de Yonsepo, le test de connexion et la consommation de tokens par agent |
 
 > Les rappels juridiques et fiscaux ne sont pas un avis professionnel. Fais-les vérifier par un comptable ou un avocat.
