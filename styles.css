@@ -193,6 +193,44 @@ body.locked .app { display: none; }
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1d2330; color: #fff; padding: 9px 16px; border-radius: 8px; z-index: 60; box-shadow: var(--shadow); }
 
+/* Agents IA */
+.small { font-size: 12px; }
+.ag-layout { display: grid; grid-template-columns: 270px 1fr; gap: 14px; align-items: start; }
+.ag-list { display: flex; flex-direction: column; gap: 8px; }
+.ag-item { display: flex; gap: 10px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; cursor: pointer; font: inherit; color: var(--ink); box-shadow: var(--shadow); }
+.ag-item:hover { border-color: #c5cad3; }
+.ag-item.active { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.ag-ico { font-size: 22px; line-height: 1; }
+.ag-ico.big { font-size: 30px; }
+.ag-main { min-width: 0; }
+.ag-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ag-title { display: flex; gap: 10px; align-items: center; }
+.tabs { display: flex; gap: 4px; background: var(--gray-soft); padding: 3px; border-radius: 9px; }
+.tab { border: 0; background: transparent; padding: 6px 10px; border-radius: 7px; cursor: pointer; font: inherit; color: #475467; }
+.tab.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+.ag-chat { background: #f7f8fa; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; height: 52vh; min-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.msg { display: flex; flex-direction: column; max-width: 88%; }
+.msg.user { align-self: flex-end; align-items: flex-end; }
+.msg.assistant { align-self: flex-start; }
+.bubble { padding: 9px 12px; border-radius: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.msg.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant .bubble { background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.bubble h3 { font-size: 15px; margin: 8px 0 4px; } .bubble h4 { font-size: 14px; margin: 6px 0 4px; }
+.bubble ul, .bubble ol { margin: 4px 0; padding-left: 20px; }
+.bubble code { background: #eef0f3; padding: 1px 4px; border-radius: 4px; font-size: 12.5px; }
+.bubble pre.code { background: #1d2330; color: #e6e9ef; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; }
+.bubble pre.code code { background: none; padding: 0; color: inherit; }
+.bubble.typing { color: var(--muted); font-style: italic; }
+.msg-actions { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+.composer { display: flex; gap: 8px; margin-top: 10px; align-items: flex-end; }
+.composer textarea { min-height: 70px; }
+.ag-error { background: var(--bad-soft); color: var(--bad); border: 1px solid #f1c4c0; border-radius: 8px; padding: 8px 12px; margin-top: 10px; overflow-wrap: anywhere; }
+.chk { display: flex !important; gap: 8px; align-items: center; font-weight: 400 !important; }
+.chk input { width: auto; margin: 0; }
+.brand-box { background: #fafbfc; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+#ag-set label > input, #ag-set label > textarea, #prov-f label > input, #key-f label > input { margin-top: 4px; }
+#ag-set label, #prov-f label, #key-f label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 500; color: #344054; }
+
 /* Mobile */
 @media (max-width: 860px) {
   .app { flex-direction: column; }
@@ -205,6 +243,8 @@ body.locked .app { display: none; }
   main { padding: 16px 14px 50px; }
   .form-grid { grid-template-columns: 1fr; }
   .kanban { grid-template-columns: repeat(5, 240px); }
+  .ag-layout { grid-template-columns: 1fr; }
+  .msg { max-width: 96%; }
 }
 
 /* Impression (PDF pour reMarkable) */
@@ -223,4 +263,7 @@ body.locked .app { display: none; }
   #print-area .box { display: inline-block; width: 4mm; height: 4mm; border: 1pt solid #000; margin-right: 6pt; vertical-align: -1pt; }
   #print-area .row { margin: 5pt 0; break-inside: avoid; }
   #print-area .page-break { break-before: page; }
+  #print-area .report h3 { font-size: 13pt; margin: 12pt 0 4pt; }
+  #print-area .report h4 { font-size: 11.5pt; margin: 8pt 0 3pt; }
+  #print-area .report ul, #print-area .report ol { margin: 3pt 0; padding-left: 16pt; }
 }
