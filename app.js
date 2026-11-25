@@ -947,7 +947,7 @@ async function logout() {
 
 // Quand on revient sur l'onglet : récupérer les changements faits sur un autre appareil
 async function refreshFromCloud() {
-  if (!Cloud.user || Cloud.dirty || Cloud.saving) return;
+  if (!Cloud.user || Cloud.dirty || Cloud.saving || window.AI_BUSY) return; // pas pendant un appel aux agents
   if (!$('#modal-backdrop').classList.contains('hidden')) return; // ne pas changer pendant une modification
   try {
     const wasReady = Cloud.ready;

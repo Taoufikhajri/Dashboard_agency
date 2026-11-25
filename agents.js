@@ -35,7 +35,7 @@ Règles importantes :
 - Les seuils, taux et dates changent : tu dis quand une information doit être vérifiée et tu indiques la source officielle à consulter (revenuquebec.ca, canada.ca/arc).
 - Tu n'inventes jamais un chiffre. Tu calcules à partir des données fournies et tu montres ton calcul.
 - Tu donnes des conseils prudents et pratiques, en français clair, étape par étape.`, { finances: true, temperature: 0.3 }),
-    a('technique', '🛠', 'Expert technique et code', 'n8n, API, JavaScript, Python, Supabase, Vercel',
+    a('technique', '💻', 'Expert technique et code', 'n8n, API, JavaScript, Python, Supabase, Vercel',
 `Tu es l'expert technique de Taoufik : automatisation (n8n), API et webhooks, JavaScript, Python, Supabase, Vercel, intégration de modèles d'IA, RAG.
 
 Ta façon de travailler :
@@ -56,6 +56,29 @@ Règles :
   ];
 }
 
+// Identité de l'équipe : prénom, titre, couleurs de l'avatar
+const TEAM = {
+  marketing: { ancien: 'Mentor marketing numérique', nom: 'Yahya', titre: 'Mentor marketing numérique', c: ['#f97316', '#ec4899'] },
+  finances:  { ancien: 'Expert finances Québec',     nom: 'Ines',  titre: 'Experte finances Québec',     c: ['#10b981', '#0ea5e9'] },
+  technique: { ancien: 'Expert technique et code',   nom: 'Jouri', titre: 'Experte technique et code',   c: ['#6366f1', '#a855f7'] },
+  rapports:  { ancien: 'Rédacteur de rapports',      nom: 'Yaman', titre: 'Rédacteur de rapports',       c: ['#f59e0b', '#ef4444'] }
+};
+const TAOUFIK = { id: 'taoufik', key: 'taoufik', nom: 'Taoufik', titre: 'Fondateur', icone: '' };
+const PALETTE = [['#06b6d4', '#3b82f6'], ['#84cc16', '#22c55e'], ['#e11d48', '#f43f5e'], ['#8b5cf6', '#d946ef'], ['#14b8a6', '#0ea5e9']];
+
+function agentColors(a) {
+  if (a.key === 'taoufik') return ['#0f172a', '#475569'];
+  if (TEAM[a.key]) return TEAM[a.key].c;
+  let h = 0; for (const ch of String(a.id || a.nom)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+function avatar(a, size = 'md', cls = '') {
+  const [c1, c2] = agentColors(a);
+  const letter = (String(a.nom || '?').trim()[0] || '?').toUpperCase();
+  return `<span class="avatar ${size} ${cls}" style="--c1:${c1};--c2:${c2}" title="${esc(a.nom)}">${esc(letter)}${a.icone ? `<i>${esc(a.icone)}</i>` : ''}</span>`;
+}
+const agentById = id => id === 'taoufik' ? TAOUFIK : db.agents.find(a => a.id === id);
+
 function ensureAgentData(d) {
   if (!Array.isArray(d.agents) || !d.agents.length) d.agents = defaultAgents();
   d.agents.forEach(a => {
@@ -63,7 +86,15 @@ function ensureAgentData(d) {
     a.conversations = Array.isArray(a.conversations) ? a.conversations : [];
     a.usage = a.usage || { total: 0, mois: {} };
     a.usage.mois = a.usage.mois || {};
+    const t = TEAM[a.key];
+    if (t) {
+      if (a.nom === t.ancien) a.nom = t.nom;   // renommage des agents d'origine
+      if (!a.titre) a.titre = t.titre;
+      if (a.key === 'technique' && a.icone === '🛠') a.icone = '💻';
+    }
+    if (a.titre === undefined) a.titre = a.role || '';
   });
+  d.reunions = Array.isArray(d.reunions) ? d.reunions : [];
   d.provider = {
     nom: 'Yonsepo', site: 'https://yonsepo.tech/', baseUrl: 'https://yonsepo.tech/v1',
     modeleDefaut: '', budgetMensuel: 0, modeles: [], dernierTest: null,
@@ -92,6 +123,7 @@ function md(s) {
     h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>');
     h = h.replace(/(?:^[-*•] .*(?:\n|$))+/gm, m => '<ul>' + m.trim().split('\n').map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>');
     h = h.replace(/(?:^\d+[.)] .*(?:\n|$))+/gm, m => '<ol>' + m.trim().split('\n').map(l => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>');
+    h = h.replace(/(<\/h[34]>|<\/ul>|<\/ol>)\n+/g, '$1');
     h = h.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
     return h;
   }).join('');
@@ -128,14 +160,19 @@ function brandText() {
   return lines.length ? 'PROFIL DE MARQUE\n' + lines.join('\n') : '';
 }
 
-function buildMessages(agent, conv) {
-  let system = agent.prompt || '';
+function agentSystem(agent) {
+  let system = `Tu t'appelles ${agent.nom}${agent.titre ? ', ' + agent.titre : ''}. Tu fais partie de l'équipe d'agents IA de Taoufik, fondateur de l'agence. Tes collègues : ${db.agents.filter(x => x.id !== agent.id).map(x => x.nom + (x.titre ? ' (' + x.titre + ')' : '')).join(', ')}. Tu parles directement à Taoufik et tu le tutoies.\n\n`;
+  system += agent.prompt || '';
   if (agent.memoire.length) system += '\n\nMÉMOIRE (idées, décisions et faits importants retenus des discussions précédentes) :\n' + agent.memoire.map(m => `- (${m.date}) ${m.texte}`).join('\n');
   if (agent.contexte) system += '\n\n' + agencyContext(agent);
   if (agent.marque) { const b = brandText(); if (b) system += '\n\n' + b; }
   system += `\n\nDate du jour : ${todayISO()}. Réponds en français.`;
+  return system;
+}
+
+function buildMessages(agent, conv) {
   const history = conv.messages.filter(m => !m.error).slice(-HISTORY_LIMIT).map(m => ({ role: m.role, content: m.content }));
-  return [{ role: 'system', content: system }, ...history];
+  return [{ role: 'system', content: agentSystem(agent) }, ...history];
 }
 
 /* ---------- Appel à la fonction serveur ---------- */
@@ -176,7 +213,7 @@ async function sendToAgent(text) {
     agent.conversations.unshift(conv); AG.convId = conv.id;
   }
   conv.messages.push({ role: 'user', content: text, date: new Date().toISOString() });
-  AG.draft = ''; AG.busy = true; AG.error = '';
+  AG.draft = ''; AG.busy = true; AG.error = ''; window.AI_BUSY = true;
   save(); render(); scrollChat();
   try {
     const res = await callAgentApi('POST', '', { model: agent.model || db.provider.modeleDefaut, temperature: agent.temperature, messages: buildMessages(agent, conv) });
@@ -185,7 +222,7 @@ async function sendToAgent(text) {
   } catch (e) {
     AG.error = e.message;
   }
-  AG.busy = false; save(); render(); scrollChat();
+  AG.busy = false; window.AI_BUSY = false; save(); render(); scrollChat();
 }
 
 function scrollChat() { const c = $('#ag-chat'); if (c) c.scrollTop = c.scrollHeight; }
@@ -231,58 +268,79 @@ function printReport(text, agent) {
 }
 
 /* ---------- Vue : Agents ---------- */
+const SUGGESTIONS = {
+  marketing: ['Comment trouver mes 3 premiers clients en Mauricie ?', 'Écris un message LinkedIn pour un directeur d’usine', 'Fais-moi un plan de contenu LinkedIn sur 4 semaines'],
+  finances: ['Combien devrais-je facturer un diagnostic ?', 'Quelles dépenses de démarrage puis-je déduire ?', 'Dois-je m’inscrire à la TPS/TVQ maintenant ?'],
+  technique: ['Explique-moi étape par étape la démo des appels manqués avec n8n', 'Comment bien protéger mes clés API ?', 'Quelle architecture pour un assistant de documentation (RAG) ?'],
+  rapports: ['Rédige un modèle de rapport de diagnostic', 'Rédige une proposition pour un gestionnaire de projets en usine', 'Rédige une étude de cas à partir de mes notes']
+};
+const hhmm = iso => { try { return new Date(iso).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+
 VIEWS.agents = () => {
   const agent = currentAgent(); AG.agentId = agent.id;
   const conv = currentConv(agent);
-  const tabs = [['chat', '💬 Discussion'], ['memoire', `🧠 Mémoire (${agent.memoire.length})`], ['reglages', '⚙ Réglages']];
-  const offline = !Cloud.user;
+  const [c1, c2] = agentColors(agent);
+  const tabs = [['chat', 'Discussion'], ['memoire', `Mémoire · ${agent.memoire.length}`], ['reglages', 'Réglages']];
   return `
-  ${offline ? '<div class="info">Les agents fonctionnent seulement en <b>mode en ligne</b> : configure Supabase (config.js), connecte-toi, puis configure le fournisseur de tokens.</div>' : ''}
-  <div class="ag-layout">
-    <div class="ag-list">
-      ${db.agents.map(a => `<button class="ag-item ${a.id === agent.id ? 'active' : ''}" data-ag-select="${a.id}">
-        <span class="ag-ico">${esc(a.icone || '🤖')}</span>
-        <span><b>${esc(a.nom)}</b><br><span class="muted">${esc(a.role || '')}</span><br><span class="muted small">🧠 ${a.memoire.length} · 💬 ${a.conversations.length} · ${(a.usage.mois[monthNow()] || 0).toLocaleString('fr-CA')} tokens ce mois</span></span>
+  ${!Cloud.user ? '<div class="info">Les agents fonctionnent seulement en <b>mode en ligne</b> : connecte-toi, puis configure le fournisseur de tokens.</div>' : ''}
+  <div class="ag-shell">
+    <aside class="ag-roster">
+      <div class="roster-head"><span>Ton équipe</span><button class="btn small" data-ag-new>+ Agent</button></div>
+      ${db.agents.map(a => `<button class="roster-item ${a.id === agent.id ? 'active' : ''}" data-ag-select="${a.id}" style="--c1:${agentColors(a)[0]};--c2:${agentColors(a)[1]}">
+        ${avatar(a, 'md')}
+        <span class="ri-text"><b>${esc(a.nom)}</b><span>${esc(a.titre || a.role || '')}</span></span>
+        <span class="ri-meta">${a.conversations.length ? '💬 ' + a.conversations.length : ''}</span>
       </button>`).join('')}
-      <button class="btn" data-ag-new>+ Nouvel agent</button>
-    </div>
-    <div class="ag-main card">
-      <div class="ag-head">
-        <div class="ag-title"><span class="ag-ico big">${esc(agent.icone || '🤖')}</span><div><b>${esc(agent.nom)}</b><div class="muted small">Modèle : ${esc(agent.model || db.provider.modeleDefaut || 'non choisi')}</div></div></div>
-        <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${AG.tab === k ? 'active' : ''}" data-ag-tab="${k}">${l}</button>`).join('')}</div>
-      </div>
-      ${AG.tab === 'chat' ? chatTab(agent, conv) : AG.tab === 'memoire' ? memoryTab(agent) : settingsTab(agent)}
-    </div>
+      <a href="#reunions" class="roster-meeting">🪑 Réunir l’équipe autour d’un projet →</a>
+    </aside>
+    <section class="ag-panel">
+      <header class="ag-hero" style="--c1:${c1};--c2:${c2}">
+        ${avatar(agent, 'xl')}
+        <div class="hero-text">
+          <h2>${esc(agent.nom)}</h2>
+          <p>${esc(agent.titre || '')}${agent.role ? ' · ' + esc(agent.role) : ''}</p>
+          <div class="hero-chips"><span>🧠 ${agent.memoire.length} souvenir${agent.memoire.length > 1 ? 's' : ''}</span><span>💬 ${agent.conversations.length} discussion${agent.conversations.length > 1 ? 's' : ''}</span><span>⚙ ${esc(agent.model || db.provider.modeleDefaut || 'modèle à choisir')}</span></div>
+        </div>
+        <nav class="seg">${tabs.map(([k, l]) => `<button class="${AG.tab === k ? 'active' : ''}" data-ag-tab="${k}">${l}</button>`).join('')}</nav>
+      </header>
+      <div class="ag-body">${AG.tab === 'chat' ? chatTab(agent, conv) : AG.tab === 'memoire' ? memoryTab(agent) : settingsTab(agent)}</div>
+    </section>
   </div>`;
 };
 
 function chatTab(agent, conv) {
+  const sugg = SUGGESTIONS[agent.key] || [];
   return `
-  <div class="toolbar">
-    <select id="ag-conv"><option value="">— Nouvelle discussion —</option>${agent.conversations.map(c => `<option value="${c.id}" ${conv && c.id === conv.id ? 'selected' : ''}>${esc(fmtDate(c.date))} · ${esc(c.titre)}</option>`).join('')}</select>
-    <button class="btn" data-ag-newconv>+ Nouvelle</button>
-    ${conv ? `<button class="btn" data-ag-summary ${AG.busy ? 'disabled' : ''}>🧠 Résumer en mémoire</button><button class="btn danger" data-ag-delconv>Supprimer</button>` : ''}
+  <div class="conv-bar">
+    <select id="ag-conv"><option value="">✨ Nouvelle discussion</option>${agent.conversations.map(c => `<option value="${c.id}" ${conv && c.id === conv.id ? 'selected' : ''}>${esc(fmtDate(c.date))} · ${esc(c.titre)}</option>`).join('')}</select>
+    <button class="btn ghost-dark" data-ag-newconv title="Nouvelle discussion">＋</button>
+    ${conv ? `<button class="btn ghost-dark" data-ag-summary ${AG.busy ? 'disabled' : ''}>🧠 Résumer en mémoire</button><button class="btn ghost-dark danger" data-ag-delconv>Supprimer</button>` : ''}
   </div>
-  <div class="ag-chat" id="ag-chat">
-    ${conv && conv.messages.length ? conv.messages.map((m, i) => `
-      <div class="msg ${m.role}">
-        <div class="bubble">${m.role === 'assistant' ? md(m.content) : esc(m.content).replace(/\n/g, '<br>')}</div>
-        ${m.role === 'assistant' ? `<div class="msg-actions">
-          <button class="btn small" data-ag-mem="${i}">📌 Mémoire</button>
-          <button class="btn small" data-ag-note="${i}">📝 Note</button>
-          <button class="btn small" data-ag-print="${i}">🖨 PDF</button>
-          <button class="btn small" data-ag-copy="${i}">⧉ Copier</button>
-          ${m.tokens ? `<span class="muted small">${m.tokens.toLocaleString('fr-CA')} tokens</span>` : ''}
-        </div>` : ''}
-      </div>`).join('') : `<div class="empty">Pose ta première question à ${esc(agent.nom)}.<br><span class="small">Il connaît ta mémoire${agent.contexte ? ', tes projets et tes chiffres' : ''}${agent.marque ? ' et ta marque' : ''}.</span></div>`}
-    ${AG.busy ? '<div class="msg assistant"><div class="bubble typing">L’agent réfléchit…</div></div>' : ''}
+  <div class="chat" id="ag-chat">
+    ${conv && conv.messages.length ? conv.messages.map((m, i) => m.role === 'assistant' ? `
+      <div class="cmsg assistant">${avatar(agent, 'sm')}
+        <div class="cbody"><div class="cmeta"><b>${esc(agent.nom)}</b> · ${hhmm(m.date)}${m.tokens ? ` · ${m.tokens.toLocaleString('fr-CA')} tokens` : ''}</div>
+          <div class="cbubble">${md(m.content)}</div>
+          <div class="cactions">
+            <button data-ag-mem="${i}" title="Garder en mémoire">📌 Mémoire</button>
+            <button data-ag-note="${i}" title="Enregistrer dans Notes">📝 Note</button>
+            <button data-ag-print="${i}" title="PDF avec ta marque">🖨 PDF</button>
+            <button data-ag-copy="${i}" title="Copier">⧉ Copier</button>
+          </div></div></div>` : `
+      <div class="cmsg user"><div class="cbody"><div class="cmeta">Toi · ${hhmm(m.date)}</div><div class="cbubble">${esc(m.content).replace(/\n/g, '<br>')}</div></div>${avatar(TAOUFIK, 'sm')}</div>`).join('')
+      : `<div class="chat-empty">${avatar(agent, 'xl')}
+          <h3>Salut Taoufik, c’est ${esc(agent.nom)} 👋</h3>
+          <p>${esc(agent.titre || '')}. Je connais ma mémoire${agent.contexte ? ', tes projets et tes chiffres' : ''}${agent.marque ? ' et ta marque' : ''}.</p>
+          <div class="sugg">${sugg.map(s => `<button data-ag-suggest="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+        </div>`}
+    ${AG.busy ? `<div class="cmsg assistant">${avatar(agent, 'sm')}<div class="cbody"><div class="cmeta"><b>${esc(agent.nom)}</b> écrit…</div><div class="cbubble typing"><span></span><span></span><span></span></div></div></div>` : ''}
   </div>
   ${AG.error ? `<div class="ag-error">⚠ ${esc(AG.error)}</div>` : ''}
-  <form id="ag-send" class="composer">
-    <textarea id="ag-input" placeholder="Écris ton message… (Ctrl + Entrée pour envoyer)" ${AG.busy ? 'disabled' : ''}>${esc(AG.draft)}</textarea>
-    <button class="btn primary" ${AG.busy ? 'disabled' : ''}>Envoyer</button>
+  <form id="ag-send" class="composer2">
+    <textarea id="ag-input" rows="1" placeholder="Écris à ${esc(agent.nom)}…  (Ctrl + Entrée pour envoyer)" ${AG.busy ? 'disabled' : ''}>${esc(AG.draft)}</textarea>
+    <button class="send-btn" ${AG.busy ? 'disabled' : ''} title="Envoyer">➤</button>
   </form>
-  <p class="muted small">Ne colle pas de renseignements personnels de clients (Loi 25) : les messages sont envoyés au fournisseur de tokens.</p>`;
+  <p class="muted small hint">🔒 Ne colle pas de renseignements personnels de clients (Loi 25) : les messages sont envoyés au fournisseur de tokens.</p>`;
 }
 
 function memoryTab(agent) {
@@ -301,6 +359,7 @@ function settingsTab(agent) {
   <form id="ag-set" class="form-grid">
     <label>Nom<input name="nom" value="${esc(agent.nom)}" required></label>
     <label>Icône (émoji)<input name="icone" value="${esc(agent.icone || '')}" maxlength="4"></label>
+    <label class="full">Titre (affiché sous son nom)<input name="titre" value="${esc(agent.titre || '')}"></label>
     <label class="full">Rôle (court)<input name="role" value="${esc(agent.role || '')}"></label>
     <label>Modèle<input name="model" list="ag-models" value="${esc(agent.model || '')}" placeholder="${esc(db.provider.modeleDefaut ? 'défaut : ' + db.provider.modeleDefaut : 'ex. nom du modèle')}"></label>
     <label>Créativité (0 = précis, 1 = créatif)<input name="temperature" type="number" min="0" max="1.5" step="0.1" value="${esc(agent.temperature)}"></label>
@@ -357,7 +416,7 @@ VIEWS.fournisseur = () => {
   </div>
   <div class="card" style="margin-top:14px"><h3>Consommation par agent</h3>
     <div class="table-wrap"><table><thead><tr><th>Agent</th><th>Modèle</th><th>Discussions</th><th>Mémoire</th><th class="num">Tokens ce mois</th><th class="num">Total</th></tr></thead>
-    <tbody>${db.agents.map(a => `<tr><td>${esc(a.icone)} ${esc(a.nom)}</td><td>${esc(a.model || p.modeleDefaut || '—')}</td><td>${a.conversations.length}</td><td>${a.memoire.length}</td><td class="num">${(a.usage.mois[mois] || 0).toLocaleString('fr-CA')}</td><td class="num">${(a.usage.total || 0).toLocaleString('fr-CA')}</td></tr>`).join('')}</tbody></table></div>
+    <tbody>${db.agents.map(a => `<tr><td><span style="display:inline-flex;gap:8px;align-items:center">${avatar(a, 'xs')} ${esc(a.nom)} <span class="muted small">${esc(a.titre || '')}</span></span></td><td>${esc(a.model || p.modeleDefaut || '—')}</td><td>${a.conversations.length}</td><td>${a.memoire.length}</td><td class="num">${(a.usage.mois[mois] || 0).toLocaleString('fr-CA')}</td><td class="num">${(a.usage.total || 0).toLocaleString('fr-CA')}</td></tr>`).join('')}</tbody></table></div>
   </div>`;
 };
 
@@ -439,6 +498,7 @@ async function testProvider() {
 document.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t || $('#modal-backdrop').contains(t)) return;
   const d = t.dataset; const agent = currentAgent();
+  if (d.agSuggest) { if (!AG.busy) sendToAgent(d.agSuggest); return; }
   if (d.agSelect) { AG.agentId = d.agSelect; AG.convId = null; AG.error = ''; AG.tab = 'chat'; render(); scrollChat(); }
   else if (d.agTab) { AG.tab = d.agTab; render(); if (AG.tab === 'chat') scrollChat(); }
   else if ('agNewconv' in d) { AG.convId = null; AG.error = ''; render(); $('#ag-input') && $('#ag-input').focus(); }
@@ -470,7 +530,7 @@ document.addEventListener('click', e => {
     db.agents = db.agents.filter(a => a.id !== agent.id); AG.agentId = null; AG.tab = 'chat'; save(); render();
   }
   else if ('agNew' in d) {
-    const a = { id: uid(), key: 'perso', icone: '🤖', nom: 'Nouvel agent', role: '', prompt: 'Tu es un assistant expert. Décris ici son rôle et ses règles.', model: '', temperature: 0.7, contexte: true, finances: false, marque: false, memoire: [], conversations: [], usage: { total: 0, mois: {} } };
+    const a = { id: uid(), key: 'perso', icone: '🤖', nom: 'Nouvel agent', titre: 'Nouveau membre de l’équipe', role: '', prompt: 'Tu es un assistant expert. Décris ici son rôle et ses règles.', model: '', temperature: 0.7, contexte: true, finances: false, marque: false, memoire: [], conversations: [], usage: { total: 0, mois: {} } };
     db.agents.push(a); AG.agentId = a.id; AG.tab = 'reglages'; save(); render();
   }
   else if (t.id === 'prov-test') testProvider();
@@ -480,7 +540,9 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   if (e.target.id === 'ag-conv') { AG.convId = e.target.value || null; AG.error = ''; render(); scrollChat(); }
 });
-document.addEventListener('input', e => { if (e.target.id === 'ag-input') AG.draft = e.target.value; });
+document.addEventListener('input', e => {
+  if (e.target.id === 'ag-input') { AG.draft = e.target.value; e.target.style.height = 'auto'; e.target.style.height = Math.min(220, e.target.scrollHeight) + 'px'; }
+});
 document.addEventListener('keydown', e => {
   if (e.target.id === 'ag-input' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#ag-send').requestSubmit(); }
 });
@@ -494,7 +556,7 @@ document.addEventListener('submit', e => {
     currentAgent().memoire.push({ id: uid(), date: todayISO(), texte: v }); save(); render();
   } else if (f.id === 'ag-set') {
     e.preventDefault(); const a = currentAgent(); const el = f.elements;
-    a.nom = el.nom.value.trim() || a.nom; a.icone = el.icone.value.trim(); a.role = el.role.value.trim();
+    a.nom = el.nom.value.trim() || a.nom; a.icone = el.icone.value.trim(); a.role = el.role.value.trim(); a.titre = el.titre.value.trim();
     a.model = el.model.value.trim(); a.temperature = Number(el.temperature.value) || 0;
     a.prompt = el.prompt.value; a.contexte = el.contexte.checked; a.finances = el.finances.checked;
     const hadBrand = a.marque; a.marque = el.marque.checked;
