@@ -124,9 +124,12 @@ module.exports = async function handler(req, res) {
   }
   if (chars > MAX_CHARS) return send(res, 413, { error: 'Discussion trop longue : commence une nouvelle discussion.' });
 
+  // Arrête proprement l'appel avant la limite de Vercel (300 s) pour renvoyer un message clair
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 280000);
   try {
     const r = await fetch(BASE + '/chat/completions', {
-      method: 'POST',
+      method: 'POST', signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
       body: JSON.stringify({ model, messages: messages.map(m => ({ role: m.role, content: m.content })), temperature, max_tokens, stream: false })
     });
@@ -137,6 +140,9 @@ module.exports = async function handler(req, res) {
     if (!content) return send(res, 502, { error: 'Réponse vide ou dans un format inattendu.', details: String(text).slice(0, 500) });
     return send(res, 200, { content, usage: (data && data.usage) || null, model: (data && data.model) || model });
   } catch (e) {
+    if (e && e.name === 'AbortError') return send(res, 504, { error: 'Le modèle a mis plus de 4 minutes à répondre.', details: 'Essaie un modèle plus rapide pour cet agent, ou une demande plus courte.' });
     return send(res, 502, { error: 'Fournisseur injoignable à l’adresse ' + BASE, details: String(e.message || e) });
+  } finally {
+    clearTimeout(timer);
   }
 };

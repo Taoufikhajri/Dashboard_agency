@@ -44,8 +44,8 @@ function meetingBrief(r) {
   return s;
 }
 
-function transcriptText(r) {
-  return r.messages.slice(-14).map(m => `${speakerName(m)} :\n${String(m.content).slice(0, 2500)}`).join('\n\n');
+function transcriptText(r, maxEach = 2500, last = 14) {
+  return r.messages.slice(-last).map(m => `${speakerName(m)} :\n${String(m.content).slice(0, maxEach)}${String(m.content).length > maxEach ? '…' : ''}`).join('\n\n');
 }
 
 /* ---------- Déroulement de la réunion ---------- */
@@ -473,7 +473,7 @@ function clientReportCard(r) {
       ${rc ? `<span class="muted small">généré le ${esc(fmtDate(rc.date))}</span>` : ''}</div>
     ${!rc ? `<p class="muted">Transforme cette réunion en rapport professionnel pour ton client, aux couleurs de <b>${esc(db.marque.nom || 'Stony Automation')}</b> : page couverture, résumé exécutif, analyse, recommandations priorisées, plan de mise en œuvre et prochaines étapes. La discussion interne et les prénoms des agents n’y apparaissent pas.</p>
       <div class="rc-gen"><label>Nom du client<input id="rc-client" value="${esc((db.projets.find(p => p.id === r.projetId) || {}).client || '')}" placeholder="ex. Usinage Deux Rives inc."></label>
-      <button class="btn primary" data-rc-gen="${r.id}" ${busy || RM.running ? 'disabled' : ''}>${busy ? 'Rédaction en cours…' : '✨ Générer le rapport client'}</button></div>`
+      <button class="btn primary" data-rc-gen="${r.id}" ${busy || RM.running ? 'disabled' : ''}>${busy ? 'Rédaction en cours… (1 à 4 min)' : '✨ Générer le rapport client'}</button></div>`
     : `<div class="rc-preview report-body">${md(rc.contenu.slice(0, 1800))}${rc.contenu.length > 1800 ? '<p class="muted">… (suite dans le PDF)</p>' : ''}</div>
       <div class="rm-actions">
         <button class="btn primary" data-rc-print="${r.id}">🖨 PDF officiel</button>
@@ -516,9 +516,9 @@ Structure exacte (Markdown) :
 Ne mets pas de titre principal ni de signature : ils sont ajoutés automatiquement.`;
   try {
     const res = await callAgentApi('POST', '', {
-      model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 3500,
+      model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 3000,
       messages: [{ role: 'system', content: agentSystem(sec) },
-        { role: 'user', content: `${meetingBrief(r)}\n\nTRANSCRIPTION :\n${transcriptText(r)}\n\nCOMPTE RENDU INTERNE :\n${r.resultat}\n\n${instr}` }]
+        { role: 'user', content: `${meetingBrief(r)}\n\nCOMPTE RENDU INTERNE (source principale) :\n${r.resultat}\n\nEXTRAITS DE LA DISCUSSION :\n${transcriptText(r, 700, 10)}\n\n${instr}` }]
     });
     addUsage(sec, res.usage);
     const m = getMeeting(id);

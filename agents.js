@@ -204,6 +204,7 @@ async function callAgentApi(method, query, body) {
     });
   } catch (e) { throw new Error('Pas de connexion Internet, ou le site ne répond pas.'); }
   let data = null; try { data = await r.json(); } catch (e) { /* pas du JSON */ }
+  if (r.status === 504 && !(data && data.error)) throw new Error('Délai dépassé : le modèle a mis trop de temps à répondre. Choisis un modèle plus rapide pour cet agent (Réglages) ou fais une demande plus courte.');
   if (r.status === 404 && !data) throw new Error('La fonction serveur /api/agent est introuvable. Vérifie que le dossier « api » est sur GitHub et que Vercel a redéployé le site. (Elle ne marche pas en ouvrant index.html directement sur l’ordinateur.)');
   if (!r.ok || !data) {
     const det = data && data.details ? ` — ${typeof data.details === 'string' ? data.details : JSON.stringify(data.details)}` : '';
