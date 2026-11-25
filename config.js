@@ -14,6 +14,6 @@
 // « mode local » (données sur cet appareil seulement, sans connexion).
 // ============================================================
 window.AGENCE_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseUrl: 'https://cehnutqqubmqczzhaptd.supabase.co',
+  supabaseAnonKey: 'sb_publishable_enPp8kHmW_C5HQiRhrwT4w_BgrVzpdU'
 };
