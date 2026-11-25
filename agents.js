@@ -129,8 +129,9 @@ function md(s) {
     let h = esc(b);
     h = h.replace(/^#{3,6} (.*)$/gm, '<h4>$1</h4>').replace(/^#{1,2} (.*)$/gm, '<h3>$1</h3>');
     h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    h = h.replace(/(?:^[-*•] .*(?:\n|$))+/gm, m => '<ul>' + m.trim().split('\n').map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>');
-    h = h.replace(/(?:^\d+[.)] .*(?:\n|$))+/gm, m => '<ol>' + m.trim().split('\n').map(l => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>');
+    h = h.replace(/^[ \t]+([-*•] )/gm, '$1');   // sous-listes indentées → puces
+    h = h.replace(/(?:^[-*•] .*(?:\n|$))+/gm, m => '<ul>' + m.trim().split('\n').map(l => `<li>${l.replace(/^[-*•] /, '')}</li>`).join('') + '</ul>\n');
+    h = h.replace(/(?:^\d+[.)] .*(?:\n|$))+/gm, m => { const n = parseInt(m, 10) || 1; return `<ol${n > 1 ? ` start="${n}"` : ''}>` + m.trim().split('\n').map(l => `<li>${l.replace(/^\d+[.)] /, '')}</li>`).join('') + '</ol>\n'; });
     h = h.replace(/(?:^\|.*(?:\n|$))+/gm, block => {
       const rows = block.trim().split('\n').filter(l => !/^\|[\s:|-]+\|?\s*$/.test(l));
       if (!rows.length) return block;

@@ -99,7 +99,11 @@ async function runMeeting(id, rounds) {
 (une ligne par action : action — responsable (un membre de l’équipe ou Taoufik) — échéance proposée)
 ## Risques et points de vigilance
 ## Questions pour Taoufik
-N’invente aucun chiffre ni aucun fait qui n’a pas été dit. Termine par une dernière ligne qui commence exactement par « MÉMO : » et qui résume les décisions en une seule phrase.`;
+N’invente aucun chiffre ni aucun fait qui n’a pas été dit.
+Après les sections, ajoute un bloc qui reprend chaque action du plan, exactement dans ce format (une action par ligne, sans gras) :
+ACTIONS :
+- titre court de l’action | responsable (Taoufik ou un prénom de l’équipe) | échéance (ex. vendredi, dans 2 semaines, 2026-12-15)
+Termine par une dernière ligne qui commence exactement par « MÉMO : » et qui résume les décisions en une seule phrase.`;
     const res = await callAgentApi('POST', '', {
       model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 1800,
       messages: [{ role: 'system', content: agentSystem(sec) }, { role: 'user', content: `${meetingBrief(r)}\n\nTRANSCRIPTION COMPLÈTE :\n${transcriptText(r)}\n\n${instr}` }]
@@ -108,10 +112,13 @@ N’invente aucun chiffre ni aucun fait qui n’a pas été dit. Termine par une
     r = getMeeting(id);
     const memo = res.content.match(/^\s*\**\s*MÉMO\s*:\s*\**\s*(.+)$/mi);
     r.memo = memo ? memo[1].replace(/\*+$/, '').trim() : '';
-    r.resultat = res.content.replace(/^\s*\**\s*MÉMO\s*:.*$/mi, '').trim();
+    const block = extractActionsBlock(res.content);
+    r.resultat = block.text.replace(/^\s*\**\s*MÉMO\s*:.*$/mi, '').trim();
     r.resultatPar = sec.id; r.statut = 'Terminée'; r.maj = new Date().toISOString();
     const kept = (r.actionsProposees || []).filter(x => x.statut !== 'proposée');
-    r.actionsProposees = [...kept, ...parseActions(r.resultat).map(x => ({ id: uid(), ...x, statut: 'proposée' }))];
+    const found = block.actions.length ? block.actions : parseActions(r.resultat);
+    r.actionsProposees = [...kept, ...found.map(x => ({ id: uid(), ...x, statut: 'proposée' }))];
+    RM.justFinished = id;
     save();
     toast('Compte rendu prêt ✓');
   } catch (e) {
@@ -120,6 +127,11 @@ N’invente aucun chiffre ni aucun fait qui n’a pas été dit. Termine par une
   }
   RM.running = false; RM.speaking = null; RM.progress = ''; window.AI_BUSY = false;
   render(); scrollMeeting();
+  if (RM.justFinished === id) {
+    RM.justFinished = null;
+    const m = getMeeting(id);
+    if (m && (m.actionsProposees || []).some(x => x.statut === 'proposée')) openActionsModal(id);
+  }
 }
 
 function scrollMeeting() { const el = $('#rm-transcript'); if (el) el.scrollTop = el.scrollHeight; }
@@ -389,11 +401,14 @@ function parseActions(text) {
 
 function actionsApprovalCard(r) {
   const list = r.actionsProposees || [];
-  if (!list.length) return '';
+  if (!list.length) return `<div class="card pa-card"><div class="rm-result-head"><h3>✅ Actions de la réunion</h3></div>
+    <p class="muted small">Aucune action détectée automatiquement dans ce compte rendu.</p>
+    <button class="btn primary" data-pa-extract="${r.id}" ${PA.busy ? 'disabled' : ''}>${PA.busy ? 'Recherche des actions…' : '🔍 Extraire les actions du compte rendu'}</button>
+    ${PA.error ? `<div class="ag-error">⚠ ${esc(PA.error)}</div>` : ''}</div>`;
   const pending = list.filter(x => x.statut === 'proposée');
   const names = ['Taoufik', ...db.agents.map(a => a.nom)];
   return `<div class="card pa-card">
-    <div class="rm-result-head"><h3>✅ Actions proposées</h3>${pending.length > 1 ? '<button class="btn small primary" data-pa-all>Tout approuver</button>' : ''}</div>
+    <div class="rm-result-head"><h3>✅ Actions proposées</h3>${pending.length ? `<button class="btn small primary" data-pa-modal="${r.id}">Choisir les actions à ajouter (${pending.length})</button>` : ''}</div>
     <p class="muted small">Vérifie, ajuste si besoin, puis approuve : l’action est ajoutée à « Actions à faire ».</p>
     ${list.map(x => x.statut === 'proposée' ? `
       <div class="pa-row" data-pa-row="${x.id}">
@@ -434,7 +449,7 @@ VIEWS.actions = () => {
   const who = ['Taoufik', ...db.agents.map(a => a.nom)];
   const person = n => n === 'Taoufik' ? TAOUFIK : (db.agents.find(a => a.nom === n) || { nom: n || '?', key: 'x', id: n });
   return `
-  ${byMeeting.length ? `<div class="info">🕓 ${pend.length} action${pend.length > 1 ? 's' : ''} proposée${pend.length > 1 ? 's' : ''} en attente d’approbation : ${byMeeting.map(m => `<button class="linkbtn inline" data-rm-goto="${m.id}">${esc(m.titre)}</button>`).join(', ')}</div>` : ''}
+  ${byMeeting.length ? `<div class="info">🕓 ${pend.length} action${pend.length > 1 ? 's' : ''} proposée${pend.length > 1 ? 's' : ''} en attente d’approbation : ${byMeeting.map(m => `<button class="btn small primary" data-pa-review="${m.id}">Choisir — ${esc(m.titre)}</button>`).join(' ')}</div>` : ''}
   <div class="toolbar">
     <input class="search" data-col="actions" placeholder="Rechercher…" value="${esc(st.q)}">
     <select id="act-who"><option value="">Responsable : tous</option>${who.map(n => `<option ${n === st.who ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
@@ -591,4 +606,144 @@ document.addEventListener('click', e => {
 
 document.addEventListener('change', e => {
   if (e.target.id === 'act-who') { (ui.actions || (ui.actions = { q: '', f: '', who: '' })).who = e.target.value; render(); }
+});
+
+/* =========================================================
+   Actions de réunion : extraction fiable + fenêtre de choix
+   ========================================================= */
+const PA = { busy: false, error: '' };
+
+// Lit le bloc « ACTIONS : » (titre | responsable | échéance) et le retire du texte affiché
+function extractActionsBlock(text) {
+  const t = String(text || '');
+  const m = t.match(/^\s*\**\s*ACTIONS\s*\**\s*:?\s*\**\s*$/mi);
+  if (!m) return { text: t, actions: [] };
+  const start = m.index;
+  const rest = t.slice(start + m[0].length);
+  const stop = rest.search(/^\s*\**\s*MÉMO\s*:/mi);
+  const blockBody = stop >= 0 ? rest.slice(0, stop) : rest;
+  const actions = blockBody.split('\n').map(l => l.trim()).filter(l => /^([-*•]|\d+[.)])\s+/.test(l)).map(l => {
+    const c = l.replace(/^([-*•]|\d+[.)])\s+/, '').replace(/\*\*/g, '').split('|').map(s => s.trim());
+    return { titre: c[0], responsable: matchResponsable(c[1]), echeanceTexte: c[2] || '', echeance: guessDate(c[2]) };
+  }).filter(a => a.titre);
+  const cleaned = (t.slice(0, start) + (stop >= 0 ? rest.slice(stop) : '')).trim();
+  return { text: cleaned, actions };
+}
+
+// Version plus tolérante de l'analyse du « Plan d'action » (listes, numéros, tableaux, sous-lignes « Responsable : »)
+const _parseActionsBase = parseActions;
+parseActions = function (text) {
+  const sec = String(text || '').split(/^#{2,4}\s+/m).find(s => /^(plan d[’']action|actions? (à faire|retenues|proposées)?|prochaines étapes)/i.test(s.trim()));
+  if (!sec) return [];
+  if (/^\s*\|/m.test(sec)) return _parseActionsBase(text);        // tableau : analyse d'origine
+  const out = []; let cur = null;
+  for (const raw of sec.split('\n').slice(1)) {
+    const l = raw.replace(/\*\*/g, '').trim(); if (!l) continue;
+    // sous-ligne « Responsable : … » ou « Échéance : … » rattachée à l'action précédente
+    const sub = l.match(/^(?:[-*•]\s*)?(responsable|qui|porteur|échéance|echeance|quand|date|délai)\s*:\s*(.+)$/i);
+    if (sub) {
+      if (cur) {
+        if (/responsable|qui|porteur/i.test(sub[1])) cur.responsable = matchResponsable(sub[2]);
+        else { cur.echeanceTexte = sub[2].trim(); cur.echeance = guessDate(sub[2]); }
+      }
+      continue;
+    }
+    if (/^([-*•]|\d+[.)])\s+/.test(l) || /^action\s*\d*\s*:/i.test(l)) {
+      const body = l.replace(/^([-*•]|\d+[.)])\s+/, '').replace(/^action\s*\d*\s*:\s*/i, '');
+      const parts = body.split(/\s+[—–|]\s+/);
+      cur = { titre: parts[0].replace(/[:;,.]\s*$/, '').trim(), responsable: parts[1] ? matchResponsable(parts[1]) : 'Taoufik',
+        echeanceTexte: (parts[2] || '').trim(), echeance: guessDate(parts[2] || '') };
+      out.push(cur);
+    }
+  }
+  return out.filter(a => a.titre).slice(0, 15);
+};
+
+// Si rien n'est trouvé : on demande au rédacteur d'extraire les actions
+async function extractActionsWithAI(id) {
+  const r = getMeeting(id); if (!r || PA.busy) return;
+  let found = parseActions(r.resultat);
+  if (!found.length) {
+    const sec = (agentById(r.secretaire) && r.secretaire !== 'taoufik') ? agentById(r.secretaire) : (db.agents.find(a => a.key === 'rapports') || db.agents[0]);
+    if (!(sec.model || db.provider.modeleDefaut)) { PA.error = 'Choisis d’abord un modèle par défaut dans « Fournisseur de tokens ».'; render(); return; }
+    PA.busy = true; PA.error = ''; window.AI_BUSY = true; render();
+    try {
+      const res = await callAgentApi('POST', '', {
+        model: sec.model || db.provider.modeleDefaut, temperature: 0, max_tokens: 800,
+        messages: [{ role: 'system', content: 'Tu extrais des actions à faire à partir d’un compte rendu de réunion. Réponds uniquement avec la liste demandée, rien d’autre.' },
+          { role: 'user', content: `Compte rendu :\n${r.resultat}\n\nListe toutes les actions concrètes à faire, une par ligne, exactement dans ce format :\nACTIONS :\n- titre court | responsable (Taoufik, ${db.agents.map(a => a.nom).join(', ')}) | échéance (ex. vendredi, dans 2 semaines)\nSi aucune action, écris seulement : ACTIONS :` }]
+      });
+      addUsage(sec, res.usage);
+      const b = extractActionsBlock(res.content.includes('ACTIONS') ? res.content : 'ACTIONS :\n' + res.content);
+      found = b.actions;
+    } catch (e) { PA.error = e.message; }
+    PA.busy = false; window.AI_BUSY = false;
+  }
+  const m = getMeeting(id);
+  if (found.length) {
+    m.actionsProposees = [...(m.actionsProposees || []).filter(x => x.statut !== 'proposée'), ...found.map(x => ({ id: uid(), ...x, statut: 'proposée' }))];
+    save(); render(); openActionsModal(id);
+  } else { if (!PA.error) PA.error = 'Aucune action concrète trouvée dans ce compte rendu.'; render(); }
+}
+
+// Fenêtre : Taoufik coche les actions à ajouter
+function openActionsModal(id) {
+  const r = getMeeting(id); if (!r) return;
+  const pending = (r.actionsProposees || []).filter(x => x.statut === 'proposée');
+  if (!pending.length) { toast('Aucune action en attente.'); return; }
+  const names = ['Taoufik', ...db.agents.map(a => a.nom)];
+  modal(`<h2>✅ Actions décidées en réunion</h2>
+    <p class="muted">« ${esc(r.titre)} » — coche les actions à ajouter à <b>Actions à faire</b>. Tu peux modifier le texte, le responsable et la date.</p>
+    <form id="pa-modal">
+      <div class="pam-tools"><label class="chk"><input type="checkbox" id="pam-all" checked> Tout cocher / décocher</label></div>
+      <div class="pam-list">${pending.map(x => `
+        <div class="pam-row" data-id="${x.id}">
+          <input type="checkbox" class="pam-check" checked>
+          <div class="pam-fields">
+            <input class="pam-title" value="${esc(x.titre)}">
+            <div class="pam-sub">
+              <select class="pam-resp">${names.map(n => `<option ${n === x.responsable ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+              <input class="pam-date" type="date" value="${esc(x.echeance || '')}">
+              ${x.echeanceTexte ? `<span class="muted small">proposé : ${esc(x.echeanceTexte)}</span>` : ''}
+            </div>
+          </div>
+        </div>`).join('')}</div>
+      <p class="muted small">Les actions non cochées sont mises de côté : tu pourras les reconsidérer plus tard dans la réunion.</p>
+      <div class="modal-actions"><button type="button" class="btn" data-close>Plus tard</button><span class="sp"></span><button class="btn primary" id="pam-go">Ajouter ${pending.length} action${pending.length > 1 ? 's' : ''}</button></div>
+    </form>`);
+  const count = () => { const n = $$('.pam-check:checked').length; $('#pam-go').textContent = n ? `Ajouter ${n} action${n > 1 ? 's' : ''}` : 'Ne rien ajouter'; };
+  $('#pam-all').onchange = e => { $$('.pam-check').forEach(c => { c.checked = e.target.checked; }); count(); };
+  $$('.pam-check').forEach(c => { c.onchange = count; });
+  $('#pa-modal').onsubmit = e => {
+    e.preventDefault(); let added = 0;
+    $$('.pam-row').forEach(row => {
+      const x = r.actionsProposees.find(y => y.id === row.dataset.id); if (!x) return;
+      x.titre = $('.pam-title', row).value.trim() || x.titre;
+      x.responsable = $('.pam-resp', row).value; x.echeance = $('.pam-date', row).value;
+      if ($('.pam-check', row).checked) { approveActionDirect(r, x); added++; } else x.statut = 'rejetée';
+    });
+    save(); closeModal(); render();
+    toast(added ? `${added} action${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} à « Actions à faire » ✓` : 'Aucune action ajoutée');
+  };
+}
+
+function approveActionDirect(r, x) {
+  const a = { id: uid(), titre: x.titre, responsable: x.responsable, statut: 'À faire', priorite: 'Normale', echeance: x.echeance || '', projet: r.projet || '', source: `Réunion « ${r.titre} » du ${r.date}`, reunionId: r.id, notes: x.echeanceTexte ? `Échéance proposée : ${x.echeanceTexte}` : '' };
+  db.actions.push(a); x.statut = 'approuvée'; x.actionId = a.id;
+}
+
+// Pastille dans le menu : nombre d'actions en attente de ta décision
+function decorateNav() {
+  const link = $('#nav a[href="#actions"]'); if (!link) return;
+  const n = pendingProposals().length;
+  let b = $('.nav-badge', link);
+  if (n) { if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; link.appendChild(b); } b.textContent = n; }
+  else if (b) b.remove();
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t || $('#modal-backdrop').contains(t)) return;
+  if (t.dataset.paModal) openActionsModal(t.dataset.paModal);
+  else if (t.dataset.paExtract) extractActionsWithAI(t.dataset.paExtract);
+  else if (t.dataset.paReview) openActionsModal(t.dataset.paReview);
 });

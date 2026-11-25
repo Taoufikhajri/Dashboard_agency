@@ -57,6 +57,7 @@ function applyBrandChrome() {
   const sb = $('.sidebar .brand');
   if (sb && !sb.dataset.branded) { sb.dataset.branded = '1'; sb.innerHTML = `${logoSVG(34, true)}<span id="brand-name"></span>`; }
   const bn = $('#brand-name'); if (bn) bn.innerHTML = name === BRAND.nom ? wordmark(true) : esc(name);
+  if (typeof decorateNav === 'function') decorateNav();
   const ab = $('.auth-brand'); if (ab && !ab.dataset.branded) { ab.dataset.branded = '1'; ab.innerHTML = `${logoSVG(44)}${wordmark()}`; }
 }
 applyBrandChrome();
