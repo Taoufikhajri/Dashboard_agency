@@ -169,6 +169,28 @@ td.num { text-align: right; white-space: nowrap; }
 .steps { padding-left: 20px; margin: 6px 0 14px; }
 .steps li { margin-bottom: 6px; }
 
+/* Connexion */
+body.locked .app { display: none; }
+.auth { position: fixed; inset: 0; background: #151a26; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 40; }
+.auth-card { background: #fff; border-radius: 14px; width: 100%; max-width: 380px; padding: 26px 26px 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); }
+.auth-brand { font-weight: 700; margin-bottom: 18px; color: var(--muted); }
+.auth-brand .brand-mark { color: var(--accent); }
+.auth h1 { font-size: 22px; margin: 0 0 14px; }
+.auth label { display: block; margin-bottom: 12px; font-size: 13px; font-weight: 500; color: #344054; }
+.auth label input { margin-top: 4px; }
+.btn.wide { width: 100%; padding: 10px; margin-top: 4px; }
+.btn:disabled { opacity: .6; cursor: wait; }
+.linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 10px 0 0; font: inherit; display: block; }
+.auth-msg { min-height: 20px; margin: 12px 0 0; font-size: 13px; }
+.auth-msg.err { color: var(--bad); }
+.auth-msg.ok { color: var(--ok); }
+
+/* Statut de synchronisation */
+.sync { font-size: 12px; color: #9aa3b5; margin-bottom: 8px; padding: 0 2px; }
+.sync.ok { color: #7fd8ac; }
+.sync.busy { color: #f0c36b; }
+.sync.err { color: #ff8f85; }
+
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1d2330; color: #fff; padding: 9px 16px; border-radius: 8px; z-index: 60; box-shadow: var(--shadow); }
 
 /* Mobile */

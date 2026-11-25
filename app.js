@@ -217,19 +217,96 @@ function migrate(d) {
   d.settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}) };
   return d;
 }
-function load() {
+let storageKey = KEY; // devient « KEY:idUtilisateur » une fois connecté
+function loadFrom(key) {
   try {
-    const d = JSON.parse(localStorage.getItem(KEY));
+    const d = JSON.parse(localStorage.getItem(key));
     if (d && d.version) return migrate(d);
-  } catch (e) { /* données illisibles : on repart des données de départ */ }
-  return seed();
+  } catch (e) { /* données illisibles */ }
+  return null;
 }
+function load() { return loadFrom(storageKey) || seed(); }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  try { localStorage.setItem(storageKey, JSON.stringify(db)); }
   catch (e) { toast('⚠ Impossible d’enregistrer (stockage du navigateur plein ou bloqué).'); }
+  Cloud.queueSave();
 }
-let db = load();
-save();
+
+/* ---------- Base de données en ligne (Supabase) ---------- */
+const CFG = window.AGENCE_CONFIG || {};
+const TABLE = 'agence_data';
+const Cloud = {
+  configured: !!(CFG.supabaseUrl && CFG.supabaseAnonKey),
+  client: null,
+  user: null,
+  ready: false,    // true quand les données en ligne ont été lues (évite d'écraser avec une vieille copie)
+  dirty: false,    // changements pas encore envoyés
+  saving: false,
+  timer: null,
+  lastRemote: null,
+
+  init() {
+    if (!this.configured) return true;
+    if (!window.supabase || !window.supabase.createClient) return false;
+    this.client = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+    return true;
+  },
+  status(text, cls = '') { const el = $('#sync-status'); if (el) { el.textContent = text; el.className = 'sync ' + cls; } },
+  queueSave() {
+    if (!this.user) return;
+    this.dirty = true;
+    if (!this.ready) { this.status('⚠ Hors ligne — gardé sur cet appareil', 'err'); return; }
+    this.status('Enregistrement…', 'busy');
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.push(), 800);
+  },
+  async push() {
+    if (!this.user || !this.ready) return false;
+    if (this.saving) { clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 800); return false; }
+    this.saving = true; this.dirty = false;
+    const updated_at = new Date().toISOString();
+    let error;
+    try { ({ error } = await this.client.from(TABLE).upsert({ user_id: this.user.id, data: db, updated_at })); }
+    catch (e) { error = e; }
+    this.saving = false;
+    if (error) {
+      this.dirty = true;
+      this.status('⚠ Pas synchronisé — nouvel essai bientôt', 'err');
+      clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 10000);
+      return false;
+    }
+    this.lastRemote = updated_at;
+    if (this.dirty) this.queueSave(); else this.status('☁ Synchronisé', 'ok');
+    return true;
+  },
+  async pull() {
+    const { data, error } = await this.client.from(TABLE).select('data, updated_at').eq('user_id', this.user.id).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  // Lit les données en ligne. Si aucune n'existe encore, envoie celles de cet appareil.
+  async sync(firstLoad = false) {
+    const remote = await this.pull();
+    if (remote && remote.data && remote.data.version) {
+      if (firstLoad || remote.updated_at !== this.lastRemote) {
+        db = migrate(remote.data);
+        try { localStorage.setItem(storageKey, JSON.stringify(db)); } catch (e) { /* ignore */ }
+        this.lastRemote = remote.updated_at;
+        this.ready = true;
+        this.status('☁ Synchronisé', 'ok');
+        return 'remote';
+      }
+      this.ready = true; this.status('☁ Synchronisé', 'ok');
+      return 'same';
+    }
+    // Première connexion : on envoie les données de cet appareil (ou les données de départ)
+    this.ready = true;
+    await this.push();
+    return 'uploaded';
+  }
+};
+
+let db = loadFrom(KEY) || seed();
 
 /* ---------- Interface générale ---------- */
 const NAV = [
@@ -661,12 +738,33 @@ function openSettings() {
     </form>
     <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
     <h3>Sauvegarde</h3>
-    <p class="muted">Tes données restent <b>dans ce navigateur, sur cet appareil</b>. Elles ne sont envoyées nulle part. Exporte une sauvegarde chaque semaine, et utilise « Importer » pour les retrouver sur un autre appareil.</p>
+    <p class="muted">${Cloud.user
+      ? 'Tes données sont dans la base de données en ligne. Une copie de secours (.json) chaque mois reste une bonne habitude.'
+      : 'Tes données restent <b>dans ce navigateur, sur cet appareil</b>. Elles ne sont envoyées nulle part. Exporte une sauvegarde chaque semaine, et utilise « Importer » pour les retrouver sur un autre appareil.'}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" id="exp">⬇ Exporter une sauvegarde (.json)</button>
       <label class="btn" style="margin:0">⬆ Importer une sauvegarde<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
       <button class="btn danger" id="reset">Tout effacer</button>
-    </div>`);
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <h3>Compte</h3>
+    ${Cloud.user ? `
+      <p class="muted">Connecté : <b>${esc(Cloud.user.email)}</b>. Tes données sont enregistrées en ligne et accessibles depuis tous tes appareils.</p>
+      <form id="pw" class="form-grid">
+        <label>Nouveau mot de passe<input name="p1" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label>Confirmer<input name="p2" type="password" minlength="8" autocomplete="new-password" required></label>
+        <div class="modal-actions full"><button class="btn">Changer le mot de passe</button><span class="sp"></span><button type="button" class="btn danger" id="logout">Se déconnecter</button></div>
+      </form>`
+    : `<p class="muted">Mode local : pas de connexion, données sur cet appareil seulement. Pour activer la connexion et l’accès à distance, remplis <b>config.js</b> (voir le README).</p>`}`);
+  if ($('#pw')) {
+    $('#pw').onsubmit = async e => {
+      e.preventDefault(); const f = e.target.elements;
+      if (f.p1.value !== f.p2.value) { toast('Les deux mots de passe sont différents.'); return; }
+      const { error } = await Cloud.client.auth.updateUser({ password: f.p1.value });
+      if (error) toast('⚠ ' + authError(error)); else { e.target.reset(); toast('Mot de passe changé ✓'); }
+    };
+    $('#logout').onclick = logout;
+  }
   $('#set').onsubmit = e => {
     e.preventDefault(); const f = e.target.elements;
     s.agence = f.agence.value.trim() || DEFAULT_SETTINGS.agence;
@@ -747,4 +845,131 @@ document.addEventListener('drop', e => {
   dragId = null; render();
 });
 
-render();
+/* ---------- Connexion (login) ---------- */
+function authError(err) {
+  const m = String((err && err.message) || err || '');
+  if (/invalid login credentials/i.test(m)) return 'Courriel ou mot de passe incorrect.';
+  if (/email not confirmed/i.test(m)) return 'Ce courriel n’est pas encore confirmé.';
+  if (/password should be at least|weak/i.test(m)) return 'Mot de passe trop faible (8 caractères minimum).';
+  if (/rate limit|too many/i.test(m)) return 'Trop d’essais. Attends quelques minutes.';
+  if (/fetch|network/i.test(m)) return 'Pas de connexion Internet ou base de données injoignable.';
+  return m || 'Erreur inconnue.';
+}
+function authMsg(text, cls = '') { const el = $('#auth-msg'); el.textContent = text; el.className = 'auth-msg ' + cls; }
+function showAuth(which) {
+  document.body.classList.add('locked');
+  $('#auth').classList.remove('hidden');
+  ['login-form', 'reset-form', 'newpass-form'].forEach(id => $('#' + id).classList.toggle('hidden', id !== which));
+  const first = $(`#${which} input`); if (first) first.focus();
+}
+function hideAuth() { document.body.classList.remove('locked'); $('#auth').classList.add('hidden'); authMsg(''); }
+async function busy(form, fn) {
+  const b = $('button.primary', form); b.disabled = true;
+  try { await fn(); } finally { b.disabled = false; }
+}
+
+$('#show-reset').onclick = () => { authMsg(''); showAuth('reset-form'); };
+$('#back-login').onclick = () => { authMsg(''); showAuth('login-form'); };
+
+$('#login-form').onsubmit = e => {
+  e.preventDefault(); const f = e.target.elements;
+  busy(e.target, async () => {
+    authMsg('Connexion…');
+    const { data, error } = await Cloud.client.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+    if (error) { authMsg(authError(error), 'err'); return; }
+    f.password.value = '';
+    await afterLogin(data.user);
+  });
+};
+
+$('#reset-form').onsubmit = e => {
+  e.preventDefault(); const f = e.target.elements;
+  busy(e.target, async () => {
+    const { error } = await Cloud.client.auth.resetPasswordForEmail(f.email.value.trim(), { redirectTo: location.origin + location.pathname });
+    if (error) authMsg(authError(error), 'err');
+    else authMsg('Si ce courriel a un compte, un lien vient d’être envoyé. Vérifie aussi tes courriels indésirables.', 'ok');
+  });
+};
+
+$('#newpass-form').onsubmit = e => {
+  e.preventDefault(); const f = e.target.elements;
+  if (f.p1.value !== f.p2.value) { authMsg('Les deux mots de passe sont différents.', 'err'); return; }
+  busy(e.target, async () => {
+    const { data, error } = await Cloud.client.auth.updateUser({ password: f.p1.value });
+    if (error) { authMsg(authError(error), 'err'); return; }
+    history.replaceState(null, '', location.pathname);
+    toast('Mot de passe enregistré ✓');
+    await afterLogin(data.user);
+  });
+};
+
+async function afterLogin(user) {
+  Cloud.user = user;
+  storageKey = `${KEY}:${user.id}`;
+  hideAuth();
+  // Copie locale de cet utilisateur, sinon données déjà sur l'appareil (mode local), sinon données de départ
+  db = loadFrom(storageKey) || loadFrom(KEY) || seed();
+  if (!location.hash || location.hash.includes('access_token') || location.hash.includes('type=')) history.replaceState(null, '', location.pathname + '#dashboard');
+  Cloud.status('Chargement…', 'busy');
+  render();
+  try {
+    await Cloud.sync(true);
+  } catch (e) {
+    Cloud.ready = false;
+    Cloud.status('⚠ Hors ligne — données de cet appareil', 'err');
+  }
+  render();
+}
+
+async function logout() {
+  if (Cloud.dirty && Cloud.ready) { toast('Envoi des derniers changements…'); await Cloud.push(); }
+  if (Cloud.dirty) {
+    const b = $('#logout');
+    if (b && !b.classList.contains('confirm')) { b.classList.add('confirm'); b.textContent = 'Changements non envoyés : cliquer encore pour quitter quand même'; return; }
+  }
+  try { localStorage.removeItem(storageKey); } catch (e) { /* ignore */ }
+  await Cloud.client.auth.signOut();
+  location.hash = '';
+  location.reload();
+}
+
+// Quand on revient sur l'onglet : récupérer les changements faits sur un autre appareil
+async function refreshFromCloud() {
+  if (!Cloud.user || Cloud.dirty || Cloud.saving) return;
+  if (!$('#modal-backdrop').classList.contains('hidden')) return; // ne pas changer pendant une modification
+  try {
+    const wasReady = Cloud.ready;
+    const r = await Cloud.sync(false);
+    if (r === 'remote') { render(); if (wasReady) toast('Données mises à jour depuis un autre appareil'); }
+    else if (!wasReady) render();
+  } catch (e) { /* toujours hors ligne */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromCloud(); });
+window.addEventListener('online', refreshFromCloud);
+
+/* ---------- Démarrage ---------- */
+async function start() {
+  if (!Cloud.configured) {
+    // Mode local : pas de connexion
+    Cloud.status('💾 Mode local (cet appareil)');
+    save(); render();
+    return;
+  }
+  if (!Cloud.init()) {
+    document.body.classList.add('locked');
+    $('#auth').classList.remove('hidden');
+    $$('#auth form').forEach(f => f.classList.add('hidden'));
+    authMsg('Impossible de charger le module de connexion. Vérifie ta connexion Internet puis recharge la page.', 'err');
+    return;
+  }
+  const isRecovery = /type=recovery/.test(location.hash);
+  Cloud.client.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') { authMsg('Choisis ton nouveau mot de passe.'); showAuth('newpass-form'); }
+  });
+  const { data: { session } } = await Cloud.client.auth.getSession();
+  if (isRecovery) { showAuth('newpass-form'); authMsg('Choisis ton nouveau mot de passe.'); return; }
+  if (session && session.user) await afterLogin(session.user);
+  else showAuth('login-form');
+}
+
+start();

@@ -15,6 +15,7 @@
       </div>
       <nav id="nav"></nav>
       <div class="sidebar-foot">
+        <div id="sync-status" class="sync"></div>
         <div id="timer-mini" class="timer-mini hidden"></div>
         <button class="btn ghost" id="open-settings">⚙ Paramètres et sauvegarde</button>
       </div>
@@ -28,12 +29,46 @@
     </main>
   </div>
 
+  <!-- Écran de connexion -->
+  <div id="auth" class="auth hidden">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark">◆</span> <span id="auth-brand">Tableau de bord de l’agence</span></div>
+
+      <form id="login-form">
+        <h1>Connexion</h1>
+        <label>Courriel<input name="email" type="email" autocomplete="username" required></label>
+        <label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary wide">Se connecter</button>
+        <button type="button" class="linkbtn" id="show-reset">Mot de passe oublié ?</button>
+      </form>
+
+      <form id="reset-form" class="hidden">
+        <h1>Mot de passe oublié</h1>
+        <p class="muted">Entre ton courriel. Tu recevras un lien pour choisir un nouveau mot de passe.</p>
+        <label>Courriel<input name="email" type="email" autocomplete="username" required></label>
+        <button class="btn primary wide">Envoyer le lien</button>
+        <button type="button" class="linkbtn" id="back-login">← Retour à la connexion</button>
+      </form>
+
+      <form id="newpass-form" class="hidden">
+        <h1>Nouveau mot de passe</h1>
+        <label>Nouveau mot de passe (8 caractères minimum)<input name="p1" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label>Confirmer<input name="p2" type="password" minlength="8" autocomplete="new-password" required></label>
+        <button class="btn primary wide">Enregistrer le mot de passe</button>
+      </form>
+
+      <p id="auth-msg" class="auth-msg"></p>
+    </div>
+  </div>
+
   <div id="modal-backdrop" class="modal-backdrop hidden">
     <div class="modal" role="dialog" aria-modal="true" id="modal"></div>
   </div>
   <div id="toast" class="toast hidden"></div>
   <div id="print-area"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
