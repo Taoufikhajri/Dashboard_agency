@@ -471,6 +471,7 @@ VIEWS.actions = () => {
               ${a.echeance ? `<span class="badge ${a.statut !== 'Fait' && d < 0 ? 'red' : a.statut !== 'Fait' && d <= 3 ? 'orange' : ''}">${esc(fmtDate(a.echeance))}${a.statut !== 'Fait' && d < 0 ? ' · en retard' : ''}</span>` : ''}
               ${a.priorite === 'Haute' ? '<span class="badge red">priorité haute</span>' : ''}
               ${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}
+              ${(a.documents || []).length ? `<span class="badge">📎 ${a.documents.length}</span>` : ''}
               ${a.source ? `<span class="muted small">${esc(a.source)}</span>` : ''}</div>
             ${ag && a.statut !== 'Fait' ? `<div class="act-agent">${running ? `<span class="agw-live">${esc(ag.nom)} travaille…</span>`
               : a.travail ? `<span class="badge ${a.statut === 'À valider' ? 'orange' : 'blue'}">📋 ${a.statut === 'À valider' ? 'Rapport à valider' : 'Rapport disponible'}</span>`
@@ -869,6 +870,7 @@ function openWork(id) {
     <div class="work-foot"><button type="button" class="linkbtn" data-work-edit="${a.id}">✏️ Modifier l’action (texte, responsable, échéance…)</button><button type="button" class="btn" data-close>Fermer</button></div>`);
   const fb = $('#work-fb');
   if (fb) fb.onsubmit = e => { e.preventDefault(); const v = e.target.elements.t.value.trim(); if (!v) return; runAgentTask(id, v); };
+  if (typeof attachDocsUI === 'function') attachDocsUI('actions', id);
 }
 
 document.addEventListener('click', e => {

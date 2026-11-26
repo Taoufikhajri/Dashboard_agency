@@ -460,6 +460,19 @@ body.locked .app { display: none; }
 .work-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .modal:has(.work-head) { max-width: 820px; }
 
+/* Pièces jointes */
+.docs-block { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 6px 0 4px; background: #faf9f6; }
+.docs-head { font-weight: 600; font-family: var(--font-title); margin-bottom: 6px; }
+.docs-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.docs-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.docs-list li:last-child { border-bottom: 0; }
+.doc-ico { font-size: 18px; }
+.doc-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.doc-name .linkbtn { padding: 0; text-align: left; font-weight: 500; overflow-wrap: anywhere; }
+.docs-drop { display: block !important; margin: 0 !important; border: 2px dashed #cbd2d9; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; color: #52606d; font-weight: 400 !important; font-size: 13px; background: #fff; transition: border-color .15s, background .15s; }
+.docs-drop:hover, .docs-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.docs-drop.busy { cursor: wait; border-style: solid; }
+
 /* =========== Rapport client =========== */
 .rc-card { border: 1px solid #e4d2c3; background: linear-gradient(180deg, #fbf7f2, #fff 140px); }
 .rc-gen { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }

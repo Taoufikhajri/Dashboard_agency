@@ -422,10 +422,12 @@ function openForm(col, id, preset = {}) {
     const del = $('#del');
     del.onclick = () => {
       if (!del.classList.contains('confirm')) { del.classList.add('confirm'); del.textContent = 'Confirmer la suppression'; return; }
+      if (typeof removeItemDocs === 'function') removeItemDocs(col, it);
       db[col] = db[col].filter(x => x.id !== id); save(); closeModal(); render(); toast('Supprimé');
     };
   }
   if ($('#print-note')) $('#print-note').onclick = () => { const data = { ...it, ...readForm($('#f'), S) }; printNote(data); };
+  if (typeof attachDocsUI === 'function') attachDocsUI(col, id); // documents.js
 }
 
 /* ---------- Vue liste générique ---------- */
@@ -538,6 +540,7 @@ VIEWS.projets = () => {
         ${p.valeur || p.mensuel ? `<div class="m">${p.valeur ? money(p.valeur) : ''}${p.valeur && p.mensuel ? ' + ' : ''}${p.mensuel ? money(p.mensuel) + '/mois' : ''}</div>` : ''}
         ${p.echeance ? `<div class="m">Échéance : ${fmtDate(p.echeance)}${daysUntil(p.echeance) < 0 && s !== 'Terminé' && s !== 'En pause' ? ' <span class="badge red">en retard</span>' : ''}</div>` : ''}
         ${p.prochaine ? `<div class="next">➡️ ${esc(p.prochaine)}</div>` : ''}
+        ${(p.documents || []).length ? `<div class="m">📎 ${p.documents.length} document${p.documents.length > 1 ? 's' : ''}</div>` : ''}
       </div>`).join('')}
     </div>`;
   }).join('')}</div>`;

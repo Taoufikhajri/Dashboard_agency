@@ -17,6 +17,8 @@ Elle inclut :
 | `api/agent.js` | La fonction serveur qui parle au fournisseur de tokens (garde ta clé secrète) |
 | `reunions.js` | Réunions d'équipe, actions à approuver, rapports clients |
 | `brand.js` | Marque Stony Automation : logo, charte graphique, mise en page des PDF |
+| `documents.js` | Pièces jointes des projets et des actions (Supabase Storage) |
+| `supabase-documents.sql` | Crée l'espace de stockage privé des pièces jointes |
 | `vercel.json` | Un réglage de Vercel pour la fonction serveur |
 | `supabase-cle-api.sql` | Le code qui permet de gérer la clé API depuis le tableau de bord |
 
@@ -174,6 +176,17 @@ Ensuite, **redéploie** : onglet **Deployments**, bouton **⋯** sur le dernier 
 > ⚠️ Les messages et le contexte (projets, chiffres) sont envoyés au fournisseur de tokens. Ne colle pas de renseignements personnels de tes clients (Loi 25). L'agent finances ne remplace pas un comptable.
 
 > Les agents ne marchent qu'en ligne (sur ton adresse Vercel, connecté). Ils ne fonctionnent pas en ouvrant `index.html` directement sur ton ordinateur.
+
+---
+
+## Pièces jointes (projets et actions)
+
+**À faire une seule fois :** dans Supabase, **SQL Editor → New query**, colle tout le fichier `supabase-documents.sql`, puis clique sur **Run**. Cela crée un espace de stockage **privé** nommé `documents` : chaque utilisateur ne voit que ses propres fichiers.
+
+**Ensuite :** ouvre un projet ou une action, puis, dans la section **📎 Documents**, clique ou glisse tes fichiers (20 Mo maximum chacun).
+- Pour ouvrir un fichier, clique sur son nom : un lien temporaire de 5 minutes s'ouvre.
+- Pour supprimer un fichier, clique deux fois sur ✕. Quand tu supprimes un projet ou une action, ses fichiers sont supprimés aussi.
+- Les fichiers **texte** (`.txt`, `.md`, `.csv`, `.json`) sont **lus par les agents** quand ils travaillent sur l'action ou discutent du projet en réunion. Pour les PDF, les images et les fichiers Word ou Excel, les agents ne voient que le nom.
 
 ---
 
