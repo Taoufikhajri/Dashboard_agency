@@ -54,7 +54,7 @@ async function runMeeting(id, rounds) {
   const parts = r.participants.map(agentById).filter(a => a && a.id !== 'taoufik');
   const missing = parts.filter(a => !(a.model || db.provider.modeleDefaut));
   if (!parts.length) { RM.error = 'Choisis au moins un participant.'; render(); return; }
-  if (missing.length) { RM.error = `Aucun modèle choisi pour : ${missing.map(a => a.nom).join(', ')}. Choisis un modèle par défaut dans « Fournisseur de tokens ».`; render(); return; }
+  if (missing.length) { RM.error = `Aucun modèle choisi pour : ${missing.map(a => a.nom).join(', ')}. Choisis un modèle pour chacun (en haut de la page de l’agent) ou un modèle par défaut dans « Fournisseur de tokens ».`; render(); return; }
 
   RM.running = true; RM.stop = false; RM.error = ''; window.AI_BUSY = true;
   r.statut = 'En cours'; save();
@@ -177,7 +177,7 @@ function newMeetingView() {
       <label class="full">Détails ou contexte (facultatif si un projet est choisi)<textarea name="sujet" placeholder="Ce que l’équipe doit savoir : situation, chiffres, contraintes…"></textarea></label>
       <label class="full">Ta question à l’équipe<textarea name="objectif" placeholder="ex. Quelle offre et quel prix proposer ? Que dois-je faire cette semaine ?"></textarea></label>
       <div class="full"><div class="lbl">Participants</div>
-        <div class="pick">${db.agents.map(a => `<label class="pick-item"><input type="checkbox" name="p" value="${a.id}" checked>${avatar(a, 'sm')}<span><b>${esc(a.nom)}</b><small>${esc(a.titre || '')}</small></span></label>`).join('')}</div>
+        <div class="pick">${db.agents.map(a => `<label class="pick-item"><input type="checkbox" name="p" value="${a.id}" checked>${avatar(a, 'sm')}<span><b>${esc(a.nom)}</b><small>${esc(a.titre || '')}</small><small class="pick-model">🧠 ${esc(a.model || db.provider.modeleDefaut || 'modèle non choisi')}</small></span></label>`).join('')}</div>
       </div>
       <label>Tours de parole
         <select name="tours"><option value="1">1 tour — rapide (${calls(1)} appels)</option><option value="2" selected>2 tours — ils réagissent entre eux (${calls(2)} appels)</option><option value="3">3 tours — approfondi (${calls(3)} appels)</option></select></label>

@@ -317,7 +317,8 @@ VIEWS.agents = () => {
         <div class="hero-text">
           <h2>${esc(agent.nom)}</h2>
           <p>${esc(agent.titre || '')}${agent.role ? ' · ' + esc(agent.role) : ''}</p>
-          <div class="hero-chips"><span>🧠 ${agent.memoire.length} souvenir${agent.memoire.length > 1 ? 's' : ''}</span><span>💬 ${agent.conversations.length} discussion${agent.conversations.length > 1 ? 's' : ''}</span><span>⚙ ${esc(agent.model || db.provider.modeleDefaut || 'modèle à choisir')}</span></div>
+          <div class="hero-chips"><span>🧠 ${agent.memoire.length} souvenir${agent.memoire.length > 1 ? 's' : ''}</span><span>💬 ${agent.conversations.length} discussion${agent.conversations.length > 1 ? 's' : ''}</span></div>
+          <div class="hero-model"><span>🧠 Modèle</span>${modelPicker(agent)}${modelTestButton(agent)}</div>
         </div>
         <nav class="seg">${tabs.map(([k, l]) => `<button class="${AG.tab === k ? 'active' : ''}" data-ag-tab="${k}">${l}</button>`).join('')}</nav>
       </header>
@@ -431,6 +432,11 @@ VIEWS.fournisseur = () => {
       ${p.modeles && p.modeles.length ? `<details style="margin-top:10px"><summary>${p.modeles.length} modèles disponibles</summary><div class="small" style="margin-top:6px">${p.modeles.map(esc).join(' · ')}</div></details>` : ''}
     </div>
     <div class="card"><h3>🔒 Clé API</h3>${keyCard()}</div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>🧠 Modèle de chaque agent</h3>
+    <p class="muted small">Chaque agent peut utiliser son propre modèle (par exemple un modèle GPT pour Yahya et un modèle Claude pour Yaman). « Par défaut » = le modèle par défaut ci-dessus. Clique sur « Tester » pour vérifier que le modèle répond.</p>
+    <div class="model-grid">${db.agents.map(a => `<div class="model-row">${avatar(a, 'sm')}<div class="model-who"><b>${esc(a.nom)}</b><span class="muted small">${esc(a.titre || '')}</span></div>${modelPicker(a)}${modelTestButton(a)}</div>`).join('')}</div>
+    ${!(p.modeles || []).length ? '<p class="muted small">💡 Clique d’abord sur « 🔌 Tester la connexion et charger les modèles » pour avoir la liste complète des modèles de ton fournisseur.</p>' : ''}
   </div>
   <div class="card" style="margin-top:14px"><h3>Consommation par agent</h3>
     <div class="table-wrap"><table><thead><tr><th>Agent</th><th>Modèle</th><th>Discussions</th><th>Mémoire</th><th class="num">Tokens ce mois</th><th class="num">Total</th></tr></thead>
@@ -592,4 +598,63 @@ document.addEventListener('submit', e => {
     p.modeleDefaut = el.modeleDefaut.value.trim(); p.budgetMensuel = Number(el.budgetMensuel.value) || 0;
     save(); render(); toast('Fournisseur enregistré ✓');
   }
+});
+
+
+/* =========================================================
+   Choix du modèle par agent (sélecteur rapide + test)
+   ========================================================= */
+const MODEL_TEST = {}; // agentId -> { busy, ok, msg, ms }
+
+function modelPicker(a) {
+  const list = [...new Set([...(db.provider.modeles || []), ...db.agents.map(x => x.model).filter(Boolean)])].sort();
+  if (a.model && !list.includes(a.model)) list.unshift(a.model);
+  const def = db.provider.modeleDefaut;
+  return `<select class="model-select" data-model-agent="${a.id}" title="Modèle utilisé par ${esc(a.nom)}">
+    <option value="" ${!a.model ? 'selected' : ''}>Par défaut${def ? ` (${esc(def)})` : ' (non choisi)'}</option>
+    ${list.map(m => `<option value="${esc(m)}" ${m === a.model ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+    <option value="__autre">✏️ Autre modèle (saisir le nom)…</option>
+  </select>`;
+}
+
+function modelTestButton(a) {
+  const t = MODEL_TEST[a.id] || {};
+  return `<button type="button" class="btn small ghost-dark" data-model-test="${a.id}" ${t.busy ? 'disabled' : ''}>${t.busy ? 'Test…' : '⚡ Tester'}</button>
+    ${t.ok === true ? `<span class="model-ok" title="${esc(t.msg || '')}">✓ ${t.ms ? (t.ms / 1000).toFixed(1) + ' s' : 'OK'}</span>` : t.ok === false ? `<span class="model-ko" title="${esc(t.msg || '')}">✕ ${esc(String(t.msg || 'erreur').slice(0, 70))}</span>` : ''}`;
+}
+
+async function testAgentModel(id) {
+  const a = db.agents.find(x => x.id === id); if (!a) return;
+  const model = a.model || db.provider.modeleDefaut;
+  if (!model) { MODEL_TEST[id] = { ok: false, msg: 'Aucun modèle choisi' }; render(); return; }
+  MODEL_TEST[id] = { busy: true }; render();
+  const t0 = Date.now();
+  try {
+    const res = await callAgentApi('POST', '', { model, temperature: 0, max_tokens: 100,
+      messages: [{ role: 'user', content: `Réponds seulement : « Bonjour Taoufik, ici ${a.nom}, prêt(e) ! »` }] });
+    addUsage(a, res.usage); save();
+    MODEL_TEST[id] = { ok: true, ms: Date.now() - t0, msg: `${res.model || model} : ${String(res.content).slice(0, 120)}` };
+  } catch (e) { MODEL_TEST[id] = { ok: false, msg: e.message }; }
+  render();
+}
+
+function chooseOtherModel(a) {
+  modal(`<h2>Modèle de ${esc(a.nom)}</h2>
+    <p class="muted">Écris le nom exact du modèle tel que ton fournisseur l’attend (par exemple un identifiant GPT ou Claude affiché dans ton compte Yonsepo).</p>
+    <form id="model-f"><label>Nom du modèle<input name="m" value="${esc(a.model || '')}" list="ag-models-all" required></label>
+      <datalist id="ag-models-all">${(db.provider.modeles || []).map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+      <div class="modal-actions"><span class="sp"></span><button type="button" class="btn" data-close>Annuler</button><button class="btn primary">Enregistrer</button></div></form>`);
+  $('#model-f').onsubmit = e => { e.preventDefault(); a.model = e.target.elements.m.value.trim(); delete MODEL_TEST[a.id]; save(); closeModal(); render(); toast(`${a.nom} utilise maintenant ${a.model}`); };
+}
+
+document.addEventListener('change', e => {
+  const sel = e.target.closest && e.target.closest('[data-model-agent]'); if (!sel) return;
+  const a = db.agents.find(x => x.id === sel.dataset.modelAgent); if (!a) return;
+  if (sel.value === '__autre') { sel.value = a.model || ''; chooseOtherModel(a); return; }
+  a.model = sel.value; delete MODEL_TEST[a.id]; save(); render();
+  toast(`${a.nom} utilise maintenant ${a.model || 'le modèle par défaut'}`);
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-model-test]'); if (!b) return;
+  testAgentModel(b.dataset.modelTest);
 });
