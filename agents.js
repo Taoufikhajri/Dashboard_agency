@@ -101,8 +101,11 @@ function ensureAgentData(d) {
   d.provider = {
     nom: 'Yonsepo', site: 'https://yonsepo.tech/', baseUrl: 'https://yonsepo.tech/v1',
     modeleDefaut: '', budgetMensuel: 0, modeles: [], dernierTest: null,
+    prix: { defaut: { entree: 3, sortie: 15 }, modeles: {} },
     ...(d.provider || {})
   };
+  d.provider.prix = { defaut: { entree: 3, sortie: 15 }, modeles: {}, ...(d.provider.prix || {}) };
+  d.agents.forEach(a => { a.usage.cout = a.usage.cout || 0; a.usage.coutMois = a.usage.coutMois || {}; });
   d.marque = { nom: '', slogan: '', ton: 'Professionnel, chaleureux, concret', couleurs: '', structure: '', signature: '', ...(d.marque || {}) };
   if (!d.marque.nom) d.marque.nom = 'Stony Automation';
   if (!d.marque.slogan) d.marque.slogan = 'L’automatisation solide pour les PME du Québec';
@@ -214,11 +217,30 @@ async function callAgentApi(method, query, body) {
   return data;
 }
 
-function addUsage(agent, usage) {
+/* ---------- Coût estimé des appels (prix en $ CA par million de tokens) ---------- */
+function modelPrice(model) {
+  const pr = db.provider.prix || {};
+  return (pr.modeles && pr.modeles[model]) || pr.defaut || { entree: 0, sortie: 0 };
+}
+function usageCost(usage, model) {
+  if (!usage) return 0;
+  const p = modelPrice(model);
+  const pin = Number(usage.prompt_tokens) || 0, pout = Number(usage.completion_tokens) || 0;
+  if (pin || pout) return (pin * (Number(p.entree) || 0) + pout * (Number(p.sortie) || 0)) / 1e6;
+  const tot = Number(usage.total_tokens) || 0;                       // seulement le total : moyenne entrée/sortie
+  return tot * (((Number(p.entree) || 0) + (Number(p.sortie) || 0)) / 2) / 1e6;
+}
+function addUsage(agent, usage, model) {
   const n = usage ? Number(usage.total_tokens) || ((Number(usage.prompt_tokens) || 0) + (Number(usage.completion_tokens) || 0)) : 0;
+  agent._lastCost = 0;
   if (!n) return 0;
   agent.usage.total += n;
   agent.usage.mois[monthNow()] = (agent.usage.mois[monthNow()] || 0) + n;
+  const cost = usageCost(usage, model || agent.model || db.provider.modeleDefaut);
+  agent.usage.cout = (agent.usage.cout || 0) + cost;
+  agent.usage.coutMois = agent.usage.coutMois || {};
+  agent.usage.coutMois[monthNow()] = (agent.usage.coutMois[monthNow()] || 0) + cost;
+  agent._lastCost = cost;
   return n;
 }
 
@@ -236,7 +258,7 @@ async function sendToAgent(text) {
   try {
     const res = await callAgentApi('POST', '', { model: agent.model || db.provider.modeleDefaut, temperature: agent.temperature, messages: buildMessages(agent, conv) });
     const tokens = addUsage(agent, res.usage);
-    conv.messages.push({ role: 'assistant', content: res.content, date: new Date().toISOString(), tokens, model: res.model });
+    conv.messages.push({ role: 'assistant', content: res.content, date: new Date().toISOString(), tokens, cout: agent._lastCost || 0, model: res.model });
   } catch (e) {
     AG.error = e.message;
   }
@@ -338,7 +360,7 @@ function chatTab(agent, conv) {
   <div class="chat" id="ag-chat">
     ${conv && conv.messages.length ? conv.messages.map((m, i) => m.role === 'assistant' ? `
       <div class="cmsg assistant">${avatar(agent, 'sm')}
-        <div class="cbody"><div class="cmeta"><b>${esc(agent.nom)}</b> · ${hhmm(m.date)}${m.tokens ? ` · ${m.tokens.toLocaleString('fr-CA')} tokens` : ''}</div>
+        <div class="cbody"><div class="cmeta"><b>${esc(agent.nom)}</b> · ${hhmm(m.date)}${m.tokens ? ` · ${m.tokens.toLocaleString('fr-CA')} tokens` : ''}${m.cout ? ` · ≈ ${money2(m.cout)}` : ''}</div>
           <div class="cbubble">${md(m.content)}</div>
           <div class="cactions">
             <button data-ag-mem="${i}" title="Garder en mémoire">📌 Mémoire</button>
@@ -415,6 +437,7 @@ VIEWS.fournisseur = () => {
     <div class="card kpi"><div class="label">Tokens ce mois</div><div class="value">${used.toLocaleString('fr-CA')}</div>
       ${p.budgetMensuel ? `<div class="sub">budget : ${Number(p.budgetMensuel).toLocaleString('fr-CA')}</div><div class="bar ${used > p.budgetMensuel ? 'warn' : ''}"><span style="width:${pct(used, p.budgetMensuel)}%"></span></div>` : '<div class="sub">aucun budget défini</div>'}</div>
     <div class="card kpi"><div class="label">Tokens au total</div><div class="value">${total.toLocaleString('fr-CA')}</div></div>
+    <div class="card kpi"><div class="label">Coût estimé ce mois</div><div class="value">${money2(db.agents.reduce((x, a) => x + ((a.usage.coutMois || {})[mois] || 0), 0))}</div><div class="sub">total : ${money2(db.agents.reduce((x, a) => x + (a.usage.cout || 0), 0))}</div></div>
     <div class="card kpi"><div class="label">Connexion</div><div class="value" style="font-size:18px">${t ? (t.ok ? '✅ OK' : '⚠ Erreur') : '— Pas testée'}</div><div class="sub">${t ? esc(fmtDate(t.date)) + (t.ok ? ` · ${t.count} modèles` : '') : ''}</div></div>
   </div>
   <div class="grid cols-2">
@@ -438,9 +461,10 @@ VIEWS.fournisseur = () => {
     <div class="model-grid">${db.agents.map(a => `<div class="model-row">${avatar(a, 'sm')}<div class="model-who"><b>${esc(a.nom)}</b><span class="muted small">${esc(a.titre || '')}</span></div>${modelPicker(a)}${modelTestButton(a)}</div>`).join('')}</div>
     ${!(p.modeles || []).length ? '<p class="muted small">💡 Clique d’abord sur « 🔌 Tester la connexion et charger les modèles » pour avoir la liste complète des modèles de ton fournisseur.</p>' : ''}
   </div>
+  ${pricesCard()}
   <div class="card" style="margin-top:14px"><h3>Consommation par agent</h3>
-    <div class="table-wrap"><table><thead><tr><th>Agent</th><th>Modèle</th><th>Discussions</th><th>Mémoire</th><th class="num">Tokens ce mois</th><th class="num">Total</th></tr></thead>
-    <tbody>${db.agents.map(a => `<tr><td><span style="display:inline-flex;gap:8px;align-items:center">${avatar(a, 'xs')} ${esc(a.nom)} <span class="muted small">${esc(a.titre || '')}</span></span></td><td>${esc(a.model || p.modeleDefaut || '—')}</td><td>${a.conversations.length}</td><td>${a.memoire.length}</td><td class="num">${(a.usage.mois[mois] || 0).toLocaleString('fr-CA')}</td><td class="num">${(a.usage.total || 0).toLocaleString('fr-CA')}</td></tr>`).join('')}</tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Agent</th><th>Modèle</th><th>Discussions</th><th>Mémoire</th><th class="num">Tokens ce mois</th><th class="num">Total</th><th class="num">Coût ce mois</th><th class="num">Coût total</th></tr></thead>
+    <tbody>${db.agents.map(a => `<tr><td><span style="display:inline-flex;gap:8px;align-items:center">${avatar(a, 'xs')} ${esc(a.nom)} <span class="muted small">${esc(a.titre || '')}</span></span></td><td>${esc(a.model || p.modeleDefaut || '—')}</td><td>${a.conversations.length}</td><td>${a.memoire.length}</td><td class="num">${(a.usage.mois[mois] || 0).toLocaleString('fr-CA')}</td><td class="num">${(a.usage.total || 0).toLocaleString('fr-CA')}</td><td class="num ai-cost">${money2((a.usage.coutMois || {})[mois] || 0)}</td><td class="num ai-cost">${money2(a.usage.cout || 0)}</td></tr>`).join('')}</tbody></table></div>
   </div>`;
 };
 
@@ -657,4 +681,31 @@ document.addEventListener('change', e => {
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-model-test]'); if (!b) return;
   testAgentModel(b.dataset.modelTest);
+});
+
+
+/* ---------- Prix des modèles (pour estimer les coûts) ---------- */
+function pricesCard() {
+  const pr = db.provider.prix;
+  const used = [...new Set([db.provider.modeleDefaut, ...db.agents.map(a => a.model)].filter(Boolean))];
+  const row = (label, key, p, custom) => `<tr data-price-row="${esc(key)}"><td>${label}</td>
+    <td><input type="number" min="0" step="0.01" class="price-in" data-price="${esc(key)}" data-kind="entree" value="${p ? esc(p.entree) : ''}" placeholder="${custom ? 'défaut' : ''}"></td>
+    <td><input type="number" min="0" step="0.01" class="price-in" data-price="${esc(key)}" data-kind="sortie" value="${p ? esc(p.sortie) : ''}" placeholder="${custom ? 'défaut' : ''}"></td></tr>`;
+  return `<div class="card" style="margin-top:14px"><h3>💲 Prix des modèles (pour estimer les coûts)</h3>
+    <p class="muted small">En <b>$ CA par million de tokens</b>, pour le texte envoyé (entrée) et le texte produit (sortie). ⚠️ Les valeurs par défaut (3 $ / 15 $) sont une <b>estimation à ajuster</b> : copie les vrais prix affichés dans ton compte Yonsepo. Laisse vide pour utiliser le prix par défaut.</p>
+    <div class="table-wrap"><table class="price-table"><thead><tr><th>Modèle</th><th>Entrée ($ / 1 M)</th><th>Sortie ($ / 1 M)</th></tr></thead>
+    <tbody>${row('<b>Prix par défaut</b>', '__defaut', pr.defaut, false)}${used.map(m => row(esc(m), m, pr.modeles[m], true)).join('')}</tbody></table></div>
+    <p class="muted small">Les coûts déjà enregistrés ne changent pas ; les nouveaux prix s’appliquent aux prochains appels.</p></div>`;
+}
+document.addEventListener('change', e => {
+  const i = e.target.closest && e.target.closest('[data-price]'); if (!i) return;
+  const key = i.dataset.price, kind = i.dataset.kind, v = i.value === '' ? '' : Math.max(0, Number(i.value) || 0);
+  const pr = db.provider.prix;
+  if (key === '__defaut') pr.defaut[kind] = v === '' ? 0 : v;
+  else {
+    const cur = pr.modeles[key] || { entree: '', sortie: '' }; cur[kind] = v;
+    if (cur.entree === '' && cur.sortie === '') delete pr.modeles[key];
+    else pr.modeles[key] = { entree: cur.entree === '' ? pr.defaut.entree : cur.entree, sortie: cur.sortie === '' ? pr.defaut.sortie : cur.sortie };
+  }
+  save(); toast('Prix enregistré ✓');
 });

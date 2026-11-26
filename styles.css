@@ -471,6 +471,14 @@ body.locked .app { display: none; }
 .model-who { display: flex; flex-direction: column; min-width: 170px; flex: 1; }
 .pick-model { color: var(--accent) !important; }
 
+/* Temps et coûts */
+.ai-cost { color: #8a4b22; }
+.time-badge { background: #eef3f0; color: #24533f; }
+.btn.ok-ghost { background: #eef6f1; border-color: #cfe3d7; color: #24533f; }
+.btn.ok-ghost:hover { background: #e2f0e7; }
+.act-clock { font-variant-numeric: tabular-nums; margin-left: 4px; }
+.price-table input { width: 110px; padding: 5px 8px; }
+
 /* Pièces jointes */
 .docs-block { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 6px 0 4px; background: #faf9f6; }
 .docs-head { font-weight: 600; font-family: var(--font-title); margin-bottom: 6px; }

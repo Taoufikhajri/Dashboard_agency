@@ -22,6 +22,14 @@ const daysUntil = s => Math.round((new Date(s + 'T12:00:00') - new Date(todayISO
 const monthKey = s => (s || '').slice(0, 7);
 const weekStart = (d = new Date()) => { const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return isoOf(x); };
 const pct = (a, b) => b > 0 ? Math.max(0, Math.min(100, Math.round(a / b * 100))) : 0;
+// Montant avec cents (coûts des agents, souvent petits)
+const money2 = n => { n = Number(n) || 0; if (n > 0 && n < 0.01) return '< 0,01 $'; return n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+// Durée lisible (les agents travaillent parfois moins d'une minute)
+const fmtDur = min => { const s = Math.round((Number(min) || 0) * 60); if (s < 60) return `${s} s`; if (s < 3600) return `${Math.floor(s / 60)} min${s % 60 ? ' ' + String(s % 60).padStart(2, '0') + ' s' : ''}`; return hm(s / 60); };
+// Le temps de Taoufik (entrée sans « qui » = Taoufik)
+const isMine = t => !t.qui || t.qui === 'Taoufik';
+// Coût d'une entrée de temps : agents = coût des tokens enregistré ; Taoufik = durée × taux horaire
+const entryCost = t => isMine(t) ? (Number(t.minutes) || 0) / 60 * (Number(db.settings.tauxHoraire) || 0) : (Number(t.cout) || 0);
 
 /* ---------- Schémas des collections ---------- */
 const STATUTS_PROJET = ['Prospect', 'En cours', 'Actif (récurrent)', 'En pause', 'Terminé'];
@@ -47,14 +55,16 @@ const SCHEMAS = {
   },
   temps: {
     single: 'entrée de temps', filter: 'categorie',
-    cols: ['date', 'projet', 'categorie', 'minutes', 'description'],
+    cols: ['date', 'qui', 'projet', 'categorie', 'minutes', 'cout', 'description'],
     sort: (a, b) => (b.date || '').localeCompare(a.date || ''),
     fields: [
       { k: 'date', l: 'Date', t: 'date', def: 'today' },
       { k: 'minutes', l: 'Durée (minutes)', t: 'number', req: true },
+      { k: 'qui', l: 'Qui', t: 'select', get o() { return ['Taoufik', ...((typeof db !== 'undefined' && db.agents) || []).map(a => a.nom)]; }, def: 'Taoufik' },
       { k: 'projet', l: 'Projet', t: 'projet' },
-      { k: 'categorie', l: 'Catégorie', t: 'select', o: ['Livraison client', 'Prospection / vente', 'Formation', 'Démo / construction', 'Admin / juridique / finances'], def: 'Démo / construction' },
-      { k: 'description', l: 'Description', t: 'text', full: true }
+      { k: 'categorie', l: 'Catégorie', t: 'select', o: ['Livraison client', 'Prospection / vente', 'Formation', 'Démo / construction', 'Admin / juridique / finances', 'Travail agent IA', 'Réunion d’équipe (IA)'], def: 'Démo / construction' },
+      { k: 'description', l: 'Description', t: 'text', full: true },
+      { k: 'cout', l: 'Coût', t: 'number', money: true, hidden: true }
     ]
   },
   transactions: {
@@ -140,6 +150,7 @@ const field = (col, k) => SCHEMAS[col].fields.find(f => f.k === k);
 const DEFAULT_SETTINGS = {
   agence: 'Stony Automation',
   objectifHeures: 14,
+  tauxHoraire: 30,
   budgetInitial: 4100,
   revenuCible: 3000,
   timer: null
@@ -354,8 +365,10 @@ function badge(v) {
 
 function cell(col, k, it) {
   const f = field(col, k); const v = it[k];
-  if (v === undefined || v === null || v === '') return '<span class="muted">—</span>';
-  if (k === 'minutes') return hm(v);
+  if ((v === undefined || v === null || v === '') && !(col === 'temps' && (k === 'cout' || k === 'qui'))) return '<span class="muted">—</span>';
+  if (col === 'temps' && k === 'cout') return `<span class="${isMine(it) ? '' : 'ai-cost'}">${money2(entryCost(it))}</span>`;
+  if (col === 'temps' && k === 'qui') return isMine(it) ? 'Taoufik' : `🤖 ${esc(v)}`;
+  if (k === 'minutes') return col === 'temps' && !isMine(it) ? fmtDur(v) : hm(v);
   if (k === 'progression') return `<div style="min-width:90px">${esc(v)} %<div class="bar ${Number(v) >= 100 ? 'ok' : ''}"><span style="width:${pct(v, 100)}%"></span></div></div>`;
   if (k === 'montant') return `<span class="${it.type === 'Revenu' ? 'pos' : 'neg'}">${it.type === 'Revenu' ? '+' : '−'} ${money(v)}</span>`;
   if (f.t === 'date') {
@@ -371,6 +384,7 @@ function cell(col, k, it) {
 function projectNames() { return db.projets.map(p => p.nom); }
 
 function inputFor(f, v) {
+  if (f.hidden) return '';
   const val = v ?? '';
   const req = f.req ? 'required' : '';
   let input;
@@ -384,6 +398,7 @@ function inputFor(f, v) {
 function readForm(form, S) {
   const data = {};
   for (const f of S.fields) {
+    if (f.hidden) continue;
     const el = form.elements[f.k]; if (!el) continue;
     let v = el.value.trim();
     if (f.t === 'number') v = v === '' ? '' : Number(v);
@@ -461,7 +476,7 @@ function listView(col) {
 }
 
 /* ---------- Calculs ---------- */
-function minutesThisWeek() { const ws = weekStart(); return db.temps.filter(t => (t.date || '') >= ws).reduce((s, t) => s + (Number(t.minutes) || 0), 0); }
+function minutesThisWeek() { const ws = weekStart(); return db.temps.filter(t => isMine(t) && (t.date || '') >= ws).reduce((s, t) => s + (Number(t.minutes) || 0), 0); }
 function sumTx(type, pred = () => true) { return db.transactions.filter(t => t.type === type && pred(t)).reduce((s, t) => s + (Number(t.montant) || 0), 0); }
 function mrr() { return db.projets.filter(p => p.statut === 'Actif (récurrent)').reduce((s, p) => s + (Number(p.mensuel) || 0), 0); }
 function lastMonths(n) {
@@ -503,6 +518,7 @@ VIEWS.dashboard = () => {
     <div class="card kpi"><div class="label">Revenus ce mois</div><div class="value pos">${money(revMois)}</div><div class="sub">dépenses : ${money(depMois)}</div></div>
     <div class="card kpi"><div class="label">Revenu récurrent</div><div class="value">${money(recurring)}<span class="muted" style="font-size:13px"> /mois</span></div><div class="sub">cible ${money(s.revenuCible)} /mois</div><div class="bar ok"><span style="width:${pct(recurring, s.revenuCible)}%"></span></div></div>
     <div class="card kpi"><div class="label">Trésorerie estimée</div><div class="value ${treso < 0 ? 'neg' : ''}">${money(treso)}</div><div class="sub">budget de départ + revenus − dépenses</div></div>
+    <div class="card kpi"><div class="label">Coût IA ce mois</div><div class="value">${money2((db.agents || []).reduce((x, a) => x + ((a.usage && a.usage.coutMois && a.usage.coutMois[monthKey(todayISO())]) || 0), 0))}</div><div class="sub">estimé · ton temps : ${money2(minW / 60 * (Number(s.tauxHoraire) || 0))} cette semaine</div></div>
   </div>
   <div class="grid cols-2">
     <div class="card"><h3>📅 Échéances (30 prochains jours et retards)</h3>
@@ -520,7 +536,7 @@ VIEWS.dashboard = () => {
 
 function timeByCategory() {
   const ws = weekStart(); const cats = field('temps', 'categorie').o;
-  const per = cats.map(c => [c, db.temps.filter(t => t.date >= ws && t.categorie === c).reduce((s, t) => s + (Number(t.minutes) || 0), 0)]);
+  const per = cats.filter(c => !/agent|IA\)/.test(c)).map(c => [c, db.temps.filter(t => isMine(t) && t.date >= ws && t.categorie === c).reduce((s, t) => s + (Number(t.minutes) || 0), 0)]);
   const max = Math.max(1, ...per.map(x => x[1]));
   return `<ul class="list">${per.map(([c, m]) => `<li><span style="flex:1">${esc(c)}<div class="bar"><span style="width:${pct(m, max)}%"></span></div></span><span class="muted">${hm(m)}</span></li>`).join('')}</ul>`;
 }
@@ -541,16 +557,54 @@ VIEWS.projets = () => {
         ${p.echeance ? `<div class="m">Échéance : ${fmtDate(p.echeance)}${daysUntil(p.echeance) < 0 && s !== 'Terminé' && s !== 'En pause' ? ' <span class="badge red">en retard</span>' : ''}</div>` : ''}
         ${p.prochaine ? `<div class="next">➡️ ${esc(p.prochaine)}</div>` : ''}
         ${(p.documents || []).length ? `<div class="m">📎 ${p.documents.length} document${p.documents.length > 1 ? 's' : ''}</div>` : ''}
+        ${(() => { const t = projectTotals(p.nom); return t.minMe || t.minAI ? `<div class="m">⏱ ${hm(t.minMe)}${t.minAI ? ' + 🤖 ' + fmtDur(t.minAI) : ''} · <b>${money2(t.coutMe + t.coutAI)}</b></div>` : ''; })()}
       </div>`).join('')}
     </div>`;
   }).join('')}</div>`;
 };
 
+function timeCostsCards() {
+  const taux = Number(db.settings.tauxHoraire) || 0;
+  const mois = monthKey(todayISO());
+  const tm = db.temps.filter(t => monthKey(t.date) === mois);
+  const meMin = tm.filter(isMine).reduce((s, t) => s + (Number(t.minutes) || 0), 0);
+  const aiMin = tm.filter(t => !isMine(t)).reduce((s, t) => s + (Number(t.minutes) || 0), 0);
+  const aiCost = (db.agents || []).reduce((s, a) => s + ((a.usage && a.usage.coutMois && a.usage.coutMois[mois]) || 0), 0);
+  const names = [...new Set([...db.projets.map(p => p.nom), ...db.temps.map(t => t.projet || '')])];
+  const rows = names.map(n => ({ n, ...projectTotals(n) })).filter(r => r.n || r.n === '').filter(r => r.minMe || r.minAI).sort((a, b) => (b.coutMe + b.coutAI) - (a.coutMe + a.coutAI));
+  const agents = (db.agents || []).map(a => ({ a, min: tm.filter(t => t.qui === a.nom).reduce((s, t) => s + (Number(t.minutes) || 0), 0), cost: (a.usage.coutMois || {})[mois] || 0, tok: (a.usage.mois || {})[mois] || 0 }));
+  return `
+  <div class="grid kpis">
+    <div class="card kpi"><div class="label">Ton temps ce mois</div><div class="value">${hm(meMin)}</div><div class="sub">valeur : ${money2(meMin / 60 * taux)} · <button class="linkbtn inline" data-set-rate>${taux} $/h</button></div></div>
+    <div class="card kpi"><div class="label">Temps des agents ce mois</div><div class="value">${fmtDur(aiMin)}</div><div class="sub">minuteur automatique</div></div>
+    <div class="card kpi"><div class="label">Coût IA ce mois (estimé)</div><div class="value">${money2(aiCost)}</div><div class="sub">selon les tokens et le prix des modèles</div></div>
+    <div class="card kpi"><div class="label">Coût total ce mois</div><div class="value">${money2(meMin / 60 * taux + aiCost)}</div><div class="sub">ton temps + IA</div></div>
+  </div>
+  <div class="grid cols-2" style="margin-bottom:14px">
+    <div class="card"><h3>📁 Temps et coût par projet</h3>
+      <div class="table-wrap"><table><thead><tr><th>Projet</th><th class="num">Ton temps</th><th class="num">Agents</th><th class="num">Coût</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${r.n ? esc(r.n) : '<span class="muted">Sans projet</span>'}</td><td class="num">${hm(r.minMe)}<div class="muted small">${money2(r.coutMe)}</div></td><td class="num">${fmtDur(r.minAI)}<div class="muted small ai-cost">${money2(r.coutAI)}</div></td><td class="num"><b>${money2(r.coutMe + r.coutAI)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Aucun temps enregistré.</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="card"><h3>🤖 Agents ce mois</h3>
+      <ul class="list">${agents.map(x => `<li><span style="display:flex;gap:8px;align-items:center">${typeof avatar === 'function' ? avatar(x.a, 'xs') : ''} ${esc(x.a.nom)} <span class="muted small">${esc(x.a.model || db.provider?.modeleDefaut || '')}</span></span><span class="muted small">${fmtDur(x.min)} · ${x.tok.toLocaleString('fr-CA')} tokens · <b class="ai-cost">${money2(x.cost)}</b></span></li>`).join('')}</ul>
+      <p class="muted small">Les prix des modèles se règlent dans <a href="#fournisseur">Fournisseur de tokens</a>.</p>
+    </div>
+  </div>`;
+}
+
+function openRate() {
+  modal(`<h2>Ton taux horaire</h2><p class="muted">Sert à estimer la valeur de ton temps sur chaque action et chaque projet.</p>
+    <form id="rate-f"><label>Taux horaire ($ CA / h)<input name="r" type="number" min="0" step="1" value="${esc(db.settings.tauxHoraire)}"></label>
+    <div class="modal-actions"><span class="sp"></span><button type="button" class="btn" data-close>Annuler</button><button class="btn primary">Enregistrer</button></div></form>`);
+  $('#rate-f').onsubmit = e => { e.preventDefault(); db.settings.tauxHoraire = Number(e.target.elements.r.value) || 0; save(); closeModal(); render(); toast('Taux horaire enregistré ✓'); };
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-set-rate]')) openRate(); });
+
 VIEWS.temps = () => {
   const t = db.settings.timer;
   const ws = weekStart();
   const days = [...Array(7)].map((_, i) => addDays(i, new Date(ws + 'T12:00:00')));
-  const perDay = days.map(d => db.temps.filter(x => x.date === d).reduce((s, x) => s + (Number(x.minutes) || 0), 0));
+  const perDay = days.map(d => db.temps.filter(x => isMine(x) && x.date === d).reduce((s, x) => s + (Number(x.minutes) || 0), 0));
   const max = Math.max(60, ...perDay);
   const minW = minutesThisWeek(); const goal = (Number(db.settings.objectifHeures) || 0) * 60;
   const cats = field('temps', 'categorie').o;
@@ -564,8 +618,9 @@ VIEWS.temps = () => {
       ${t ? '<button class="btn danger confirm" id="t-stop">■ Arrêter et enregistrer</button>' : '<button class="btn ok" id="t-start">▶ Démarrer</button>'}
     </div>
   </div>
+  ${timeCostsCards()}
   <div class="grid cols-2" style="margin-bottom:14px">
-    <div class="card"><h3>Cette semaine : ${hm(minW)} / ${db.settings.objectifHeures} h</h3>
+    <div class="card"><h3>Cette semaine : ${hm(minW)} / ${db.settings.objectifHeures} h <span class="muted small">(ton temps · ${money2(minW / 60 * (Number(db.settings.tauxHoraire) || 0))})</span></h3>
       <div class="bar ${minW >= goal ? 'ok' : ''}"><span style="width:${pct(minW, goal)}%"></span></div>
       <div class="chart">${days.map((d, i) => `<div class="col"><div class="pair"><div class="b h" title="${hm(perDay[i])}" style="height:${pct(perDay[i], max)}%"></div></div><div class="lbl">${new Date(d + 'T12:00:00').toLocaleDateString('fr-CA', { weekday: 'short' })}</div></div>`).join('')}</div>
     </div>
@@ -737,14 +792,26 @@ setInterval(tick, 1000);
 $('#timer-mini').onclick = () => { location.hash = 'temps'; };
 
 function startTimer() {
-  db.settings.timer = { start: Date.now(), projet: $('#t-projet').value, categorie: $('#t-cat').value, description: $('#t-desc').value.trim() };
-  save(); render(); toast('Minuteur démarré');
+  startTimerFor({ projet: $('#t-projet').value, categorie: $('#t-cat').value, description: $('#t-desc').value.trim() });
 }
-function stopTimer() {
+// Démarre le minuteur (arrête et enregistre celui qui tourne déjà)
+function startTimerFor(o) {
+  if (db.settings.timer) stopTimer(true);
+  db.settings.timer = { start: Date.now(), projet: o.projet || '', categorie: o.categorie || 'Livraison client', description: o.description || '', actionId: o.actionId || '' };
+  save(); render(); toast(`Minuteur démarré${o.description ? ' : ' + o.description.slice(0, 40) : ''}`);
+}
+function stopTimer(silent) {
   const t = db.settings.timer; if (!t) return;
   const minutes = Math.max(1, Math.round(timerElapsed() / 60000));
-  db.temps.push({ id: uid(), date: isoOf(new Date(t.start)), minutes, projet: t.projet, categorie: t.categorie, description: t.description });
-  db.settings.timer = null; save(); render(); toast(`${hm(minutes)} enregistrées ✓`);
+  db.temps.push({ id: uid(), date: isoOf(new Date(t.start)), minutes, qui: 'Taoufik', projet: t.projet, categorie: t.categorie, description: t.description, actionId: t.actionId || '' });
+  db.settings.timer = null; save(); render(); if (!silent) toast(`${hm(minutes)} enregistrées ✓ (${money2(minutes / 60 * (Number(db.settings.tauxHoraire) || 0))})`);
+}
+// Totaux par projet (temps de Taoufik et des agents, coûts)
+function projectTotals(nom) {
+  const list = db.temps.filter(t => (t.projet || '') === (nom || ''));
+  const mine = list.filter(isMine), ai = list.filter(t => !isMine(t));
+  const sum = (l, f) => l.reduce((s, t) => s + f(t), 0);
+  return { minMe: sum(mine, t => Number(t.minutes) || 0), minAI: sum(ai, t => Number(t.minutes) || 0), coutMe: sum(mine, entryCost), coutAI: sum(ai, entryCost), nb: list.length };
 }
 
 /* ---------- Paramètres et sauvegarde ---------- */
@@ -755,6 +822,7 @@ function openSettings() {
       <label class="full">Nom de l’agence<input name="agence" value="${esc(s.agence)}"></label>
       <label>Objectif d’heures par semaine<input name="objectifHeures" type="number" step="any" value="${esc(s.objectifHeures)}"></label>
       <label>Budget de départ ($ CA)<input name="budgetInitial" type="number" step="any" value="${esc(s.budgetInitial)}"></label>
+      <label>Ton taux horaire ($ CA / h)<input name="tauxHoraire" type="number" step="any" value="${esc(s.tauxHoraire)}"></label>
       <label class="full">Revenu récurrent visé ($ CA par mois)<input name="revenuCible" type="number" step="any" value="${esc(s.revenuCible)}"></label>
       <div class="modal-actions full"><span class="sp"></span><button class="btn primary">Enregistrer</button></div>
     </form>
@@ -790,7 +858,7 @@ function openSettings() {
   $('#set').onsubmit = e => {
     e.preventDefault(); const f = e.target.elements;
     s.agence = f.agence.value.trim() || DEFAULT_SETTINGS.agence;
-    for (const k of ['objectifHeures', 'budgetInitial', 'revenuCible']) s[k] = Number(f[k].value) || 0;
+    for (const k of ['objectifHeures', 'budgetInitial', 'revenuCible', 'tauxHoraire']) s[k] = Number(f[k].value) || 0;
     save(); closeModal(); render(); toast('Paramètres enregistrés ✓');
   };
   $('#exp').onclick = () => {

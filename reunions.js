@@ -48,6 +48,14 @@ function transcriptText(r, maxEach = 2500, last = 14) {
   return r.messages.slice(-last).map(m => `${speakerName(m)} :\n${String(m.content).slice(0, maxEach)}${String(m.content).length > maxEach ? '…' : ''}`).join('\n\n');
 }
 
+/* ---------- Minuteur automatique des agents ----------
+   Chaque travail d'agent est enregistré dans « Gestion du temps » :
+   durée réelle de l'appel + coût estimé (tokens × prix du modèle). */
+function logAgentTime(agent, ms, cost, o = {}) {
+  if (!agent || !ms) return;
+  db.temps.push({ id: uid(), date: todayISO(), minutes: Math.round(ms / 600) / 100, qui: agent.nom, projet: o.projet || '', categorie: o.categorie || 'Travail agent IA', description: o.description || '', actionId: o.actionId || '', reunionId: o.reunionId || '', cout: Math.round((cost || 0) * 10000) / 10000, tokens: o.tokens || 0, auto: true });
+}
+
 /* ---------- Déroulement de la réunion ---------- */
 async function runMeeting(id, rounds) {
   let r = getMeeting(id); if (!r || RM.running) return;
@@ -57,6 +65,8 @@ async function runMeeting(id, rounds) {
   if (missing.length) { RM.error = `Aucun modèle choisi pour : ${missing.map(a => a.nom).join(', ')}. Choisis un modèle pour chacun (en haut de la page de l’agent) ou un modèle par défaut dans « Fournisseur de tokens ».`; render(); return; }
 
   RM.running = true; RM.stop = false; RM.error = ''; window.AI_BUSY = true;
+  const spent = {};   // agentId -> { ms, cost, tokens }
+  const track = (ag, t0, tokens) => { const x = spent[ag.id] || (spent[ag.id] = { ms: 0, cost: 0, tokens: 0 }); x.ms += Date.now() - t0; x.cost += ag._lastCost || 0; x.tokens += tokens || 0; };
   r.statut = 'En cours'; save();
   const startTour = r.messages.filter(m => m.agentId !== 'taoufik').reduce((mx, m) => Math.max(mx, m.tour || 0), 0);
   const total = rounds * parts.length + 1; let step = 0;
@@ -79,8 +89,9 @@ async function runMeeting(id, rounds) {
           { role: 'system', content: agentSystem(a) },
           { role: 'user', content: `${meetingBrief(r)}\n\nTRANSCRIPTION JUSQU’ICI :\n${transcriptText(r) || '(personne n’a encore parlé)'}\n\n${instr}` }
         ];
+        const t0 = Date.now();
         const res = await callAgentApi('POST', '', { model: a.model || db.provider.modeleDefaut, temperature: a.temperature, messages: msgs, max_tokens: 700 });
-        const tokens = addUsage(a, res.usage);
+        const tokens = addUsage(a, res.usage); track(a, t0, tokens);
         r = getMeeting(id); if (!r) throw new Error('Réunion supprimée.');
         r.messages.push({ id: uid(), agentId: a.id, tour, content: res.content, tokens, date: new Date().toISOString() });
         save(); render(); scrollMeeting();
@@ -104,11 +115,12 @@ Après les sections, ajoute un bloc qui reprend chaque action du plan, exactemen
 ACTIONS :
 - titre court de l’action | responsable (Taoufik ou un prénom de l’équipe) | échéance (ex. vendredi, dans 2 semaines, 2026-12-15)
 Termine par une dernière ligne qui commence exactement par « MÉMO : » et qui résume les décisions en une seule phrase.`;
+    const t0s = Date.now();
     const res = await callAgentApi('POST', '', {
       model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 1800,
       messages: [{ role: 'system', content: agentSystem(sec) }, { role: 'user', content: `${meetingBrief(r)}\n\nTRANSCRIPTION COMPLÈTE :\n${transcriptText(r)}\n\n${instr}` }]
     });
-    addUsage(sec, res.usage);
+    track(sec, t0s, addUsage(sec, res.usage));
     r = getMeeting(id);
     const memo = res.content.match(/^\s*\**\s*MÉMO\s*:\s*\**\s*(.+)$/mi);
     r.memo = memo ? memo[1].replace(/\*+$/, '').trim() : '';
@@ -125,6 +137,11 @@ Termine par une dernière ligne qui commence exactement par « MÉMO : » et qui
     RM.error = e.message;
     r = getMeeting(id); if (r) { r.statut = r.resultat ? 'Terminée' : 'Interrompue'; save(); }
   }
+  // Temps et coût de chaque agent pour cette réunion
+  const rr = getMeeting(id);
+  Object.entries(spent).forEach(([aid, x]) => logAgentTime(agentById(aid), x.ms, x.cost, { projet: rr ? rr.projet : '', categorie: 'Réunion d’équipe (IA)', description: `Réunion « ${rr ? rr.titre : ''} »`, reunionId: id, tokens: x.tokens }));
+  if (rr) { rr.coutIA = (rr.coutIA || 0) + Object.values(spent).reduce((t, x) => t + x.cost, 0); rr.dureeIA = (rr.dureeIA || 0) + Object.values(spent).reduce((t, x) => t + x.ms, 0) / 60000; }
+  save();
   RM.running = false; RM.speaking = null; RM.progress = ''; window.AI_BUSY = false;
   render(); scrollMeeting();
   if (RM.justFinished === id) {
@@ -472,7 +489,9 @@ VIEWS.actions = () => {
               ${a.priorite === 'Haute' ? '<span class="badge red">priorité haute</span>' : ''}
               ${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}
               ${(a.documents || []).length ? `<span class="badge">📎 ${a.documents.length}</span>` : ''}
+              ${actionTimeBadge(a)}
               ${a.source ? `<span class="muted small">${esc(a.source)}</span>` : ''}</div>
+            ${!ag && a.statut !== 'Fait' ? actionTimerButton(a) : ''}
             ${ag && a.statut !== 'Fait' ? `<div class="act-agent">${running ? `<span class="agw-live">${esc(ag.nom)} travaille…</span>`
               : a.travail ? `<span class="badge ${a.statut === 'À valider' ? 'orange' : 'blue'}">📋 ${a.statut === 'À valider' ? 'Rapport à valider' : 'Rapport disponible'}</span>`
               : `<button class="btn small" data-agw-run="${a.id}">▶ ${esc(ag.nom)}, fais ce travail</button>`}</div>` : ''}
@@ -538,13 +557,16 @@ Structure exacte (Markdown) :
 ## Prochaines étapes
 Ne mets pas de titre principal ni de signature : ils sont ajoutés automatiquement.`;
   try {
+    const t0 = Date.now();
     const res = await callAgentApi('POST', '', {
       model: sec.model || db.provider.modeleDefaut, temperature: 0.3, max_tokens: 3000,
       messages: [{ role: 'system', content: agentSystem(sec) },
         { role: 'user', content: `${meetingBrief(r)}\n\nCOMPTE RENDU INTERNE (source principale) :\n${r.resultat}\n\nEXTRAITS DE LA DISCUSSION :\n${transcriptText(r, 700, 10)}\n\n${instr}` }]
     });
-    addUsage(sec, res.usage);
+    const tk = addUsage(sec, res.usage);
     const m = getMeeting(id);
+    logAgentTime(sec, Date.now() - t0, sec._lastCost, { projet: m.projet || '', categorie: 'Livraison client', description: `Rapport client « ${client || m.titre} »`, reunionId: id, tokens: tk });
+    m.coutIA = (m.coutIA || 0) + (sec._lastCost || 0);
     m.rapportClient = { contenu: res.content.trim(), date: todayISO(), client, titre: m.projet ? `${m.projet}` : m.titre, par: sec.id };
     save(); toast('Rapport client prêt ✓');
   } catch (e) { RC.error = e.message; }
@@ -594,6 +616,7 @@ document.addEventListener('click', e => {
   if (d.actToggle) {
     e.stopPropagation();
     const a = db.actions.find(x => x.id === d.actToggle);
+    if (a && a.statut !== 'Fait' && db.settings.timer && db.settings.timer.actionId === a.id) stopTimer(true);
     if (a) { a.statut = a.statut === 'Fait' ? 'À faire' : 'Fait'; if (a.statut === 'Fait') a.faitLe = todayISO(); save(); render(); toast(a.statut === 'Fait' ? 'Bravo, action terminée ✓' : 'Action rouverte'); }
     return;
   }
@@ -811,12 +834,15 @@ Réponds exactement avec ces deux sections :
     msgs.push({ role: 'user', content: `Correction demandée par Taoufik : ${feedback}\nRefais le travail en tenant compte de sa remarque, avec les mêmes deux sections.` });
   }
   try {
+    const t0 = Date.now();
     const res = await callAgentApi('POST', '', { model: ag.model || db.provider.modeleDefaut, temperature: Math.min(0.5, ag.temperature ?? 0.5), max_tokens: 3000, messages: msgs });
     const tokens = addUsage(ag, res.usage);
+    const ms = Date.now() - t0, cost = ag._lastCost || 0;
+    logAgentTime(ag, ms, cost, { projet: a.projet || '', categorie: 'Travail agent IA', description: (feedback ? 'Correction — ' : '') + a.titre, actionId: id, tokens });
     const x = db.actions.find(y => y.id === id);
     if (x) {
       const hist = x.travail ? [...(x.travail.historique || []), { date: x.travail.date, contenu: x.travail.contenu, feedback: x.travail.feedbackSuivant || '' }].slice(-5) : [];
-      x.travail = { contenu: res.content.trim(), ...splitWork(res.content), date: new Date().toISOString(), agentId: ag.id, tokens, version: (x.travail ? (x.travail.version || 1) + 1 : 1), historique: hist };
+      x.travail = { contenu: res.content.trim(), ...splitWork(res.content), date: new Date().toISOString(), agentId: ag.id, tokens, cout: cost, duree: ms / 60000, version: (x.travail ? (x.travail.version || 1) + 1 : 1), historique: hist };
       if (feedback && hist.length) hist[hist.length - 1].feedback = feedback;
       x.statut = 'À valider';
     }
@@ -850,7 +876,7 @@ function openWork(id) {
   const ag = agentByName(a.responsable) || (a.travail && agentById(a.travail.agentId)) || TAOUFIK;
   const w = a.travail; const running = AGW.running.has(id); const err = AGW.error[id];
   modal(`<div class="work-head">${avatar(ag, 'lg')}<div><div class="muted small">${esc(ag.nom)} · ${esc(ag.titre || '')}</div><h2>${esc(a.titre)}</h2>
-      <div class="act-meta">${badge(a.statut || 'À faire')}${a.echeance ? `<span class="badge">${esc(fmtDate(a.echeance))}</span>` : ''}${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}${w ? `<span class="muted small">version ${w.version || 1} · ${esc(fmtDate(String(w.date).slice(0, 10)))}${w.tokens ? ' · ' + w.tokens.toLocaleString('fr-CA') + ' tokens' : ''}</span>` : ''}</div></div></div>
+      <div class="act-meta">${badge(a.statut || 'À faire')}${a.echeance ? `<span class="badge">${esc(fmtDate(a.echeance))}</span>` : ''}${a.projet ? `<span class="badge">▦ ${esc(a.projet)}</span>` : ''}${w ? `<span class="muted small">version ${w.version || 1} · ${esc(fmtDate(String(w.date).slice(0, 10)))}${w.tokens ? ' · ' + w.tokens.toLocaleString('fr-CA') + ' tokens' : ''}${w.duree ? ' · ⏱ ' + fmtDur(w.duree) : ''}${w.cout ? ' · ≈ ' + money2(w.cout) : ''}</span>` : ''}</div></div></div>
     ${err ? `<div class="ag-error">⚠ ${esc(err)}</div>` : ''}
     ${running ? `<div class="work-running">${avatar(ag, 'sm')}<span>${esc(ag.nom)} travaille sur cette tâche…</span><span class="typing"><span></span><span></span><span></span></span></div>` : ''}
     ${!w && !running ? `<p>${esc(ag.nom)} peut réaliser cette tâche et te remettre un livrable avec un court rapport de travail. Tu pourras ensuite le valider ou demander une correction.</p>
@@ -906,3 +932,40 @@ document.addEventListener('click', e => {
   }
   if (open && !btn && !$('#modal-backdrop').contains(open)) openActionPanel(open.dataset.actOpen);
 });
+
+
+/* =========================================================
+   Minuteur par action (pour Taoufik) + temps total par action
+   ========================================================= */
+function actionTotals(a) {
+  const list = db.temps.filter(t => t.actionId === a.id);
+  const mine = list.filter(isMine), ai = list.filter(t => !isMine(t));
+  let minMe = mine.reduce((s, t) => s + (Number(t.minutes) || 0), 0);
+  let cout = mine.reduce((s, t) => s + entryCost(t), 0) + ai.reduce((s, t) => s + entryCost(t), 0);
+  const tm = db.settings.timer;
+  if (tm && tm.actionId === a.id) {                                   // minuteur en cours
+    const run = timerElapsed() / 60000;
+    minMe += run; cout += run / 60 * (Number(db.settings.tauxHoraire) || 0);
+  }
+  return { minMe, minAI: ai.reduce((s, t) => s + (Number(t.minutes) || 0), 0), cout };
+}
+function actionTimeBadge(a) {
+  const t = actionTotals(a);
+  if (!t.minMe && !t.minAI) return '';
+  return `<span class="badge time-badge">⏱ ${t.minMe ? hm(t.minMe) : ''}${t.minMe && t.minAI ? ' + ' : ''}${t.minAI ? '🤖 ' + fmtDur(t.minAI) : ''} · ${money2(t.cout)}</span>`;
+}
+function actionTimerButton(a) {
+  const tm = db.settings.timer;
+  if (tm && tm.actionId === a.id) return `<div class="act-agent"><button class="btn small danger confirm" data-act-timer-stop="${a.id}">■ Arrêter <span class="act-clock" data-clock-for="${a.id}">${fmtClock(timerElapsed())}</span></button></div>`;
+  return `<div class="act-agent"><button class="btn small ok-ghost" data-act-timer="${a.id}" title="Démarrer le minuteur pour cette action">▶ Démarrer le minuteur</button></div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-act-timer],[data-act-timer-stop]'); if (!b) return;
+  e.stopPropagation();
+  if (b.dataset.actTimerStop) { stopTimer(); return; }
+  const a = db.actions.find(x => x.id === b.dataset.actTimer); if (!a) return;
+  startTimerFor({ projet: a.projet || '', categorie: 'Livraison client', description: a.titre, actionId: a.id });
+  if (a.statut === 'À faire') { a.statut = 'En cours'; save(); render(); }
+}, true);
+// Horloge en direct sur la carte de l'action en cours
+setInterval(() => { const el = $('.act-clock'); if (el && db.settings.timer) el.textContent = fmtClock(timerElapsed()); }, 1000);
