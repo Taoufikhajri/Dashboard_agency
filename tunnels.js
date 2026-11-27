@@ -478,6 +478,7 @@ function emailsTab() {
       <li>Menu <b>Expéditeurs, domaines et IP</b> → <b>Expéditeurs</b> → ajoute ton courriel et clique le lien de confirmation reçu.</li>
       <li>Menu (ton nom en haut à droite) → <b>SMTP et API</b> → onglet <b>Clés API</b> → <b>Générer une nouvelle clé</b>. Copie-la (elle commence par <code>xkeysib-</code>).</li>
       <li>Colle-la ci-dessous. Elle est cachée : même toi tu ne pourras plus la relire ici.</li>
+      <li>Important : menu <b>Sécurité</b> → <b>IP autorisées</b> → <b>Désactiver le blocage</b> pour l’API (l’adresse IP de Vercel change à chaque envoi).</li>
     </ol>
     ${TN.keyInfo ? `<p class="small">Clé enregistrée : <code>••••${esc(TN.keyInfo.key_hint || '')}</code> · ${fmtDate(String(TN.keyInfo.updated_at).slice(0, 10))}</p>` : ''}
     <div class="tn-row"><input type="password" id="bv-key" placeholder="${TN.keyInfo ? 'Nouvelle clé (pour la remplacer)' : 'xkeysib-…'}" autocomplete="off"><button class="btn primary" data-tn-savekey>Enregistrer la clé</button></div>

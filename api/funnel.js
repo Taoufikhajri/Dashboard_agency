@@ -137,6 +137,7 @@ async function brevoSend(settings, to, mail, unsubUrl) {
   });
   if (!r.ok) {
     let m = ''; try { const j = await r.json(); m = j.message || j.code || ''; } catch (e) { }
+    if (/unrecognised IP|unrecognized IP|authorised_ips|not verified/i.test(m)) throw new Error('Brevo bloque l’adresse IP de Vercel (elle change à chaque envoi). Dans Brevo : Sécurité → IP autorisées → « Désactiver le blocage » pour l’API, puis réessaie.');
     throw new Error('Brevo a refusé l’envoi' + (m ? ' : ' + m : ` (${r.status})`));
   }
 }
@@ -174,7 +175,7 @@ async function processDue(base, { owner, enrollmentId, limit = 60 } = {}) {
       await logEmail(en.owner, c, mail.subject, 'sequence', 'erreur', e.message);
       // on réessaiera au prochain passage (dans 1 h minimum)
       await db('PATCH', `enrollments?id=eq.${q(en.id)}`, { prochain_envoi: new Date(Date.now() + 3600000).toISOString() }, 'return=minimal');
-      if (/Clé Brevo manquante|expéditeur manquant|unauthorized|Key not found/i.test(e.message)) break;
+      if (/Clé Brevo manquante|expéditeur manquant|unauthorized|Key not found|adresse IP/i.test(e.message)) break;
     }
   }
   return { traites: rows.length, envoyes, erreurs, erreur: details[0] || null };
@@ -296,7 +297,7 @@ module.exports = async function handler(req, res) {
         const unsubUrl = `${base}/api/funnel?action=unsub&c=${c.id}&t=${unsubToken(c.id)}`;
         const mail = buildEmail(settings, c, sujet, corps, unsubUrl);
         try { await brevoSend(settings, c, mail, unsubUrl); envoyes++; await logEmail(user.id, c, mail.subject, 'diffusion', 'envoye'); }
-        catch (e) { erreurs++; erreur = erreur || e.message; await logEmail(user.id, c, mail.subject, 'diffusion', 'erreur', e.message); if (/Clé Brevo|expéditeur|unauthorized|Key not found/i.test(e.message)) break; }
+        catch (e) { erreurs++; erreur = erreur || e.message; await logEmail(user.id, c, mail.subject, 'diffusion', 'erreur', e.message); if (/Clé Brevo|expéditeur|unauthorized|Key not found|adresse IP/i.test(e.message)) break; }
       }
       return send(res, 200, { total: list.length, envoyes, erreurs, erreur });
     }
