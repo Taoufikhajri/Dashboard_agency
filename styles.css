@@ -510,7 +510,77 @@ table.mdt th, table.mdt td { border: 1px solid var(--line); padding: 6px 8px; }
    MODE NUIT — palette « Pierre nuit » (écran seulement : l'impression reste claire)
    Activé par <html data-theme="dark">
    ===================================================================== */
+
+/* ---------- 🎯 Prospection ---------- */
+.sp { flex: 1; }
+.toolbar .sp { flex: 1; }
+.cols-3 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.info.warn { background: #fff6e8; border-color: #f2d2a4; color: #7a4a12; }
+.info.err { background: #fdecec; border-color: #f5c2c2; color: #8a1c1c; }
+.info.small { font-size: 12.5px; padding: 8px 10px; margin: 8px 0; }
+.kanban.pipe { grid-template-columns: repeat(6, minmax(180px, 1fr)); }
+.pcol { background: #eceef2; border-radius: var(--radius); padding: 10px; min-height: 200px; }
+.pcol.over { outline: 2px dashed var(--accent); }
+.pcol[data-etape="Client"] { background: #e6f1ec; }
+.pcol[data-etape="Pas intéressé"] { opacity: .75; }
+.pcard { background: #fff; border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: var(--shadow); cursor: pointer; border-left: 3px solid var(--accent); }
+.pcard.due { border-left-color: var(--bad); }
+.pcard .t { font-weight: 600; }
+.pcard .m { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.pcard .next { font-size: 12px; margin-top: 6px; background: #f6f7f9; padding: 5px 7px; border-radius: 6px; }
+.relances { margin-bottom: 14px; border-left: 4px solid var(--bad); }
+.relances li { cursor: pointer; }
+.modal:has(.pr-head) { max-width: 920px; }
+.pr-head { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.pr-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 13px; }
+.pr-etape { min-width: 190px; }
+.pr-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.pr-row .sp { flex: 1; }
+.pr-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; margin-top: 6px; }
+.pr-grid h3 { font-size: 15px; margin: 6px 0 8px; }
+.pr-log { display: flex; gap: 6px; margin-bottom: 8px; }
+.pr-log select { width: 120px; } .pr-log input { flex: 1; }
+.pr-hist { max-height: 300px; overflow-y: auto; }
+.pr-hist li { font-size: 13px; gap: 8px; }
+.pr-msgopts { display: flex; gap: 6px; margin-bottom: 6px; }
+.pr-draft { min-height: 230px; width: 100%; font-size: 13.5px; line-height: 1.45; }
+
+/* ---------- 🩺 Diagnostics ---------- */
+.diag-card { cursor: pointer; transition: transform .12s; }
+.diag-card:hover { transform: translateY(-2px); }
+.diag-card .t { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.diag-nums { display: flex; gap: 16px; margin-top: 10px; }
+.diag-nums span { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.diag-nums b { font-family: Outfit, Inter, sans-serif; font-size: 18px; color: var(--text, #1f2933); }
+.diag-ed .card { margin-bottom: 14px; }
+.diag-ed .form-grid label { display: block; font-size: 13px; font-weight: 500; }
+.diag-ed .form-grid label :is(input, select, textarea) { margin-top: 4px; width: 100%; font-weight: 400; }
+.roi-card { background: linear-gradient(160deg, var(--accent-soft), transparent 70%); }
+.roi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.roi-k { background: rgba(255,255,255,.7); border: 1px solid rgba(0,0,0,.06); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.roi-k span { font-size: 12px; color: var(--muted); }
+.roi-k b { font-family: Outfit, Inter, sans-serif; font-size: 20px; }
+.roi-k small { font-size: 11px; color: var(--muted); }
+.roi-k.big { grid-column: span 2; background: var(--accent); color: #fff; }
+.roi-k.big span { color: rgba(255,255,255,.85); } .roi-k.big b { font-size: 28px; }
+.roi-k.pos b { color: var(--ok); } .roi-k.neg b { color: var(--bad); }
+.dg-table input { width: 100%; min-width: 64px; padding: 6px 8px; }
+.dg-table td:first-child input { min-width: 200px; }
+.dg-table td.num { white-space: nowrap; font-weight: 600; }
+.dg-rtext { width: 100%; min-height: 420px; font-family: ui-monospace, monospace; font-size: 13px; }
+label.inline { display: flex; gap: 6px; align-items: center; }
+
 @media screen {
+  html[data-theme="dark"] :is(.pcol) { background: #161c22; }
+  html[data-theme="dark"] .pcol[data-etape="Client"] { background: #14231d; }
+  html[data-theme="dark"] .pcard { background: #1f262d; color: inherit; }
+  html[data-theme="dark"] .pcard .next { background: #1b2229; }
+  html[data-theme="dark"] .roi-k { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+  html[data-theme="dark"] .roi-k.big { background: #2f6f57; }
+  html[data-theme="dark"] .diag-nums b { color: #e6e9ec; }
+  html[data-theme="dark"] .info.warn { background: rgba(184,107,58,.15); border-color: rgba(184,107,58,.4); color: #f1c9a6; }
+  html[data-theme="dark"] .info.err { background: rgba(220,80,80,.14); border-color: rgba(220,80,80,.4); color: #f5b5b5; }
+
 html[data-theme="dark"] {
   color-scheme: dark;
   --bg: #12171c;  --panel: #1b2229;  --panel-2: #222b33;
@@ -620,6 +690,11 @@ html[data-theme="dark"] ::-webkit-scrollbar-track { background: transparent; }
 
 /* Mobile */
 @media (max-width: 860px) {
+  .pr-grid { grid-template-columns: 1fr; }
+  .pr-head { flex-direction: column; }
+  .kanban.pipe { grid-template-columns: repeat(6, 230px); }
+  .roi-grid { grid-template-columns: 1fr; } .roi-k.big { grid-column: auto; }
+
   .app { flex-direction: column; }
   .sidebar { width: 100%; height: auto; position: static; }
   .brand { padding: 12px 14px; }
@@ -666,6 +741,10 @@ html[data-theme="dark"] ::-webkit-scrollbar-track { background: transparent; }
   #print-area .p-brand { display: flex; align-items: center; gap: 10pt; font-size: 20pt; margin-bottom: 10pt; }
   #print-area .wordmark b { font-weight: 800; } #print-area .wordmark span { color: #2f6f57; font-weight: 500; margin-left: 4pt; }
   #print-area .report h3 { color: #2f6f57; }
+  #print-area .roi-print { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt; margin: 4pt 0 14pt; }
+  #print-area .roi-print div { border: 0.6pt solid #c9c2b6; border-radius: 4pt; padding: 6pt 8pt; background: #f4f1ec; }
+  #print-area .roi-print span { display: block; font-size: 8pt; color: #52606d; }
+  #print-area .roi-print b { font-size: 14pt; color: #2f6f57; }
   #print-area .report.official h3 { font-size: 14pt; border-bottom: 1pt solid #e4ded4; padding-bottom: 3pt; margin-top: 16pt; }
   #print-area .report.official h4 { font-size: 11.5pt; color: #1f2933; }
   #print-area table.mdt { border-collapse: collapse; width: 100%; margin: 6pt 0; font-size: 9.5pt; break-inside: avoid; }

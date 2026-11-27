@@ -114,23 +114,29 @@ printReport = function (text, agent) {
     ${m.signature ? `<div class="p-sign">${esc(m.signature)}</div>` : ''}`);
 };
 
-function printClientReport(r) {
-  const rc = r.rapportClient; if (!rc) return;
+// Rapport officiel générique : page couverture + contenu, aux couleurs de la marque (format Lettre)
+function printBrandedReport({ titre = '', client = '', date = '', contenu = '', kicker = 'Rapport d’analyse et de recommandations', avant = '' } = {}) {
   const m = db.marque;
   printHTML(`
     <div class="cover">
       <div class="cover-top">${logoSVG(70)}${wordmark()}</div>
       <div class="cover-mid">
-        <div class="cover-kicker">Rapport d’analyse et de recommandations</div>
-        <h1 class="cover-title">${esc(rc.titre || r.titre)}</h1>
-        ${rc.client ? `<div class="cover-client">Préparé pour : <b>${esc(rc.client)}</b></div>` : ''}
-        <div class="cover-date">${esc(fmtDate(rc.date || todayISO()))}</div>
+        <div class="cover-kicker">${esc(kicker)}</div>
+        <h1 class="cover-title">${esc(titre)}</h1>
+        ${client ? `<div class="cover-client">Préparé pour : <b>${esc(client)}</b></div>` : ''}
+        <div class="cover-date">${esc(fmtDate(date || todayISO()))}</div>
       </div>
       <div class="cover-bottom"><span>${esc(m.slogan || BRAND.slogan)}</span><span>Document confidentiel</span></div>
     </div>
     <div class="page-break"></div>
-    <div class="p-head small">${logoSVG(26)}<div class="p-name">${esc(m.nom || BRAND.nom)}</div><div class="p-right">${esc(rc.client || '')}</div></div>
-    <div class="report official">${md(rc.contenu)}</div>
+    <div class="p-head small">${logoSVG(26)}<div class="p-name">${esc(m.nom || BRAND.nom)}</div><div class="p-right">${esc(client || '')}</div></div>
+    ${avant || ''}
+    <div class="report official">${md(contenu)}</div>
     <div class="p-sign">${esc(m.signature || m.nom || BRAND.nom)}</div>
     <div class="p-foot">${esc(m.nom || BRAND.nom)} · ${esc(m.slogan || BRAND.slogan)}</div>`, 'Letter');
+}
+
+function printClientReport(r) {
+  const rc = r.rapportClient; if (!rc) return;
+  printBrandedReport({ titre: rc.titre || r.titre, client: rc.client, date: rc.date, contenu: rc.contenu });
 }

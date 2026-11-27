@@ -180,6 +180,29 @@ Ensuite, **redéploie** : onglet **Deployments**, bouton **⋯** sur le dernier 
 
 ---
 
+## 🎯 Prospection et 🩺 Diagnostics clients
+
+Aucune configuration : ces deux sections apparaissent dans le menu après la mise à jour.
+
+**Prospection** (ton objectif : 10 contacts par semaine)
+1. Ajoute tes contacts avec **+ Prospect**, ou importe un fichier **CSV** (export Excel ou Google Sheets). Seule la colonne « Entreprise » est obligatoire.
+2. Glisse les cartes d'une étape à l'autre : À contacter → Contacté → Rendez-vous prévu → Diagnostic proposé → Client.
+3. Clique sur une carte pour ouvrir sa fiche :
+   - note chaque appel ou message dans l'**historique** (la relance est réglée automatiquement à +7 jours) ;
+   - demande à **Yahya** d'écrire le message (premier contact, relance, proposition de diagnostic…) puis copie-le ou ouvre-le dans ton courriel. **Tu l'envoies toi-même**, puis clique « Marquer comme envoyé » ;
+   - **Convertir en client** crée automatiquement le projet.
+4. Les relances du jour apparaissent sur le tableau de bord et dans une pastille du menu.
+
+⚠️ Loi anti-pourriel (LCAP) : n'envoie un courriel ou un SMS commercial que si tu as une relation d'affaires existante ou un consentement. Le champ « Consentement » de la fiche te le rappelle. Le courriel et le téléphone du prospect ne sont jamais envoyés à l'IA.
+
+**Diagnostics clients** (ton produit d'entrée)
+1. Depuis la fiche d'un prospect : **🩺 Faire un diagnostic**, ou **+ Nouveau diagnostic**.
+2. Pendant la rencontre, remplis : l'entreprise, les tâches répétitives (fois par semaine, minutes, personnes, taux horaire, % automatisable), les occasions perdues et ton offre.
+3. Le **retour sur investissement** se calcule en direct : heures récupérées, gain par année, coût la première année, ROI et nombre de mois pour rentabiliser.
+4. **Générer le rapport** : Yaman rédige un rapport professionnel avec uniquement tes chiffres ([À COMPLÉTER] quand il manque une info). Tu peux modifier le texte, puis **🖨 PDF à ma marque** (page couverture Stony Automation).
+
+Les chiffres sont des estimations : valide-les toujours avec le client.
+
 ## Pièces jointes (projets et actions)
 
 **À faire une seule fois :** dans Supabase, **SQL Editor → New query**, colle tout le fichier `supabase-documents.sql`, puis clique sur **Run**. Cela crée un espace de stockage **privé** nommé `documents` : chaque utilisateur ne voit que ses propres fichiers.
