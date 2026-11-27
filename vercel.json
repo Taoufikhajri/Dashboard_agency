@@ -2,6 +2,21 @@
   "functions": {
     "api/agent.js": {
       "maxDuration": 300
+    },
+    "api/funnel.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/f/:slug",
+      "destination": "/f/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/funnel?action=cron",
+      "schedule": "0 13 * * *"
+    }
+  ]
 }

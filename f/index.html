@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stony Automation</title>
+  <meta name="robots" content="index,follow">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #F5F3EF; }
+    .fn-loading { min-height: 100vh; display: grid; place-items: center; font-family: Inter, system-ui, sans-serif; color: #7B8794; }
+  </style>
+  <script src="/funnel-render.js"></script>
+</head>
+<body>
+  <div id="app"><div class="fn-loading">Chargement…</div></div>
+<script>
+(function () {
+  const R = window.FunnelRender;
+  const st = document.createElement('style'); st.textContent = R.css(''); document.head.appendChild(st);
+  const app = document.getElementById('app');
+  const parts = location.pathname.replace(/\/+$/, '').split('/');
+  const slug = (new URLSearchParams(location.search).get('s') || parts[parts.length - 1] || '').toLowerCase();
+  const merciMode = new URLSearchParams(location.search).get('merci') === '1';
+  let cfg = null;
+
+  function notFound() {
+    app.innerHTML = '<div class="fn-loading" style="text-align:center;padding:20px"><div><h1 style="font-family:Outfit,sans-serif;color:#1F2933">Page introuvable</h1><p>Cette page n’existe pas ou n’est plus disponible.</p><p><a href="/site/" style="color:#2F6F57">Retour au site</a></p></div></div>';
+  }
+  function showMerci() {
+    app.innerHTML = R.merci(cfg); window.scrollTo(0, 0);
+    app.querySelectorAll('[data-fn-click]').forEach(a => a.addEventListener('click', () => {
+      try { navigator.sendBeacon('/api/funnel?action=click', new Blob([JSON.stringify({ slug })], { type: 'application/json' })); } catch (e) {}
+    }));
+  }
+  function showCapture() {
+    app.innerHTML = R.capture(cfg);
+    const form = app.querySelector('.fn-form'), msg = form.querySelector('.fn-msg'), btn = form.querySelector('button');
+    const err = t => { msg.textContent = t; msg.classList.add('show'); };
+    form.addEventListener('submit', async e => {
+      e.preventDefault(); msg.classList.remove('show');
+      const f = form.elements;
+      const data = { slug, courriel: f.courriel.value.trim(), prenom: f.prenom ? f.prenom.value.trim() : '', entreprise: f.entreprise ? f.entreprise.value.trim() : '', telephone: f.telephone ? f.telephone.value.trim() : '', consentement: f.consentement.checked, site_web: f.site_web.value };
+      if (f.prenom && !data.prenom) return err('Merci d’indiquer votre prénom.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(data.courriel)) return err('Le courriel ne semble pas valide.');
+      if (!data.consentement) return err('Merci de cocher la case de consentement.');
+      const label = btn.textContent; btn.disabled = true; btn.textContent = 'Envoi…';
+      try {
+        const r = await fetch('/api/funnel?action=optin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'Envoi impossible.');
+        history.replaceState(null, '', location.pathname + '?merci=1');
+        showMerci();
+      } catch (ex) { err(ex.message + ' Réessayez dans un instant.'); btn.disabled = false; btn.textContent = label; }
+    });
+  }
+
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return notFound();
+  fetch('/api/funnel?action=page&s=' + encodeURIComponent(slug) + (merciMode ? '&vue=0' : ''))
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(j => {
+      cfg = j.config || {};
+      const c = cfg.capture || {};
+      document.title = (cfg.titre_page || c.titre || j.nom || 'Stony Automation').replace(/\*\*/g, '');
+      if (cfg.description) { const m = document.createElement('meta'); m.name = 'description'; m.content = cfg.description; document.head.appendChild(m); }
+      merciMode ? showMerci() : showCapture();
+    })
+    .catch(notFound);
+})();
+</script>
+</body>
+</html>

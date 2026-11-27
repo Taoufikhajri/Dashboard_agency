@@ -203,6 +203,22 @@ Aucune configuration : ces deux sections apparaissent dans le menu après la mis
 
 Les chiffres sont des estimations : valide-les toujours avec le client.
 
+## 🧲 Tunnels et courriels automatiques (comme systeme.io)
+
+**Une seule fois :**
+1. Supabase → **SQL Editor** → New query → colle **`supabase-tunnels.sql`** → **Run**.
+2. Tableau de bord → **🧲 Tunnels & courriels** → onglet **⚙️ Courriels Brevo** : suis les 4 étapes (compte Brevo gratuit, expéditeur confirmé, clé API, adresse postale), puis « M'envoyer un essai ».
+
+**Créer un tunnel :**
+1. **+ Nouveau tunnel** → choisis un modèle (📘 Guide gratuit ou 🩺 Diagnostic gratuit). La page et la séquence de courriels sont préremplies.
+2. Modifie les textes à gauche : l'aperçu à droite change en direct (bouton 📱 pour la version mobile).
+3. Ajoute ton lien de guide (Google Drive) ou de réservation (Calendly) dans la page merci.
+4. Onglet **✉️ Séquences** : relis les courriels et remplace « COLLE-ICI-LE-LIEN-DU-GUIDE ».
+5. **🚀 Publier**, puis partage le lien : `https://TON-SITE/f/nom-du-tunnel`.
+
+**Ce qui se passe ensuite :** chaque inscrit devient un **contact** (avec étiquettes), reçoit le 1er courriel tout de suite, puis les suivants selon les délais (envoi chaque matin vers 8 h et quand tu ouvres le tableau de bord). Il est aussi copié dans 🎯 Prospection si l'option est cochée.
+Chaque courriel contient ton adresse postale et un lien de désabonnement (Loi anti-pourriel). Les statistiques (visites, inscrits, taux de conversion) sont sur chaque carte de tunnel.
+
 ## 🌐 Site web (landing page)
 
 Ton site public est à l'adresse **`https://TON-SITE.vercel.app/site/`** (bouton « 🌐 Mon site » dans Prospection).
