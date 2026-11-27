@@ -180,6 +180,94 @@
       .logo b, .logo span { font-size: 18px; }
       .menu .btn { padding: 9px 14px; }
     }
+    /* ===== v2 : style premium ===== */
+    h2 { text-transform: uppercase; letter-spacing: .01em; }
+    h1 em, h2 em { font-style: normal; background: linear-gradient(90deg, #3F8F6E, #7FC4A4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .btn.big { padding: 17px 30px; font-size: 16.5px; }
+    .btn.glass { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+    .btn.glass:hover { background: rgba(255,255,255,.15); }
+    header { background: rgba(22,30,38,.85); }
+    header.scrolled { border-bottom-color: rgba(255,255,255,.08); }
+    header .logo b { color: #fff; } header .logo > span > span { color: #7FC4A4; }
+    .menu a { color: #CBD2D9; } .menu a:hover { color: #fff; }
+    .hero { background: radial-gradient(1200px 600px at 75% -10%, #23463a 0%, transparent 60%), linear-gradient(180deg, #161E26 0%, #1F2933 100%); color: #F5F3EF; padding: 90px 0 110px; }
+    .hero h1 { text-transform: uppercase; font-size: clamp(34px, 4.8vw, 60px); letter-spacing: -.005em; }
+    .hero h1 em { color: transparent; background-image: linear-gradient(90deg, #6FBF98, #CFE5D9); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+    .hero .lead { color: #CBD2D9; } .hero .lead b { color: #fff; }
+    .glow { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .45; pointer-events: none; }
+    .glow.g1 { width: 420px; height: 420px; background: #2F6F57; right: 6%; top: 18%; animation: float 12s ease-in-out infinite; }
+    .glow.g2 { width: 300px; height: 300px; background: #B86B3A; left: -80px; bottom: -120px; opacity: .18; animation: float 15s ease-in-out infinite reverse; }
+    @keyframes float { 50% { transform: translate(30px, -30px); } }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); font-size: 13px; font-weight: 600; color: #E4F0EA; margin-bottom: 22px; }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #4FA883; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79,168,131,.7); } 70% { box-shadow: 0 0 0 10px rgba(79,168,131,0); } 100% { box-shadow: 0 0 0 0 rgba(79,168,131,0); } }
+    .hero-ticks { list-style: none; padding: 0; margin: 22px 0 0; display: flex; gap: 20px; flex-wrap: wrap; color: #9AA5B1; font-size: 14px; }
+    .hero-ticks li::before { content: '✓ '; color: #7FC4A4; font-weight: 700; }
+    .desk { background: #0F161C; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45); overflow: hidden; transform: perspective(1400px) rotateY(-6deg) rotateX(2deg); transition: transform .6s, opacity .7s; position: relative; }
+    .desk.in { transform: perspective(1400px) rotateY(-6deg) rotateX(2deg); }
+    .desk:hover { transform: perspective(1400px) rotateY(0) rotateX(0); }
+    .desk-bar { display: flex; align-items: center; gap: 6px; padding: 12px 14px; background: #161E26; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .desk-bar i { width: 10px; height: 10px; border-radius: 50%; background: #3E4C59; } .desk-bar i:first-child { background: #B86B3A; } .desk-bar i:nth-child(2) { background: #CBD2D9; } .desk-bar i:nth-child(3) { background: #4FA883; }
+    .desk-bar span { margin-left: 10px; font-size: 12px; color: #7B8794; }
+    .desk-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .desk-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .desk-kpis div { background: #1A232B; border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,.05); }
+    .desk-kpis small { display: block; font-size: 11px; color: #7B8794; }
+    .desk-kpis b { font-family: Outfit; font-size: 21px; color: #fff; }
+    .desk-flow { display: flex; align-items: center; gap: 6px; }
+    .desk-flow .node { flex: 1; text-align: center; font-size: 12px; padding: 10px 6px; border-radius: 10px; background: #1A232B; color: #CBD2D9; border: 1px solid rgba(255,255,255,.06); }
+    .desk-flow .node.ai { background: rgba(47,111,87,.3); color: #E4F0EA; border-color: rgba(127,196,164,.35); }
+    .desk-flow .node.ok { background: rgba(79,168,131,.15); color: #7FC4A4; }
+    .desk-flow .arrow { width: 18px; height: 2px; background: linear-gradient(90deg, transparent, #4FA883); flex: none; }
+    .desk-list div { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #CBD2D9; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .desk-list em { margin-left: auto; font-style: normal; font-size: 11px; color: #7FC4A4; background: rgba(79,168,131,.12); padding: 2px 8px; border-radius: 999px; }
+    .st { width: 8px; height: 8px; border-radius: 50%; flex: none; } .st.ok { background: #4FA883; } .st.wip { background: #E0A458; }
+    .desk-note { position: absolute; right: 12px; bottom: 8px; font-size: 10.5px; color: #52606D; }
+    .marquee-wrap { background: #161E26; padding: 26px 0 30px; border-top: 1px solid rgba(255,255,255,.05); }
+    .marquee-title { text-align: center; color: #7B8794; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 16px; }
+    .marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+    .track { display: flex; gap: 14px; width: max-content; animation: scroll 45s linear infinite; }
+    .track span { margin-right: 0; }
+    .marquee:hover .track { animation-play-state: paused; }
+    .track span { white-space: nowrap; padding: 10px 20px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); color: #CBD2D9; font-weight: 600; font-size: 15px; font-family: Outfit; }
+    @keyframes scroll { to { transform: translateX(calc(-50% - 7px)); } }
+    .trust { border-top: 1px solid rgba(255,255,255,.05); }
+    .who-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
+    .who-c { padding: 26px; border-radius: var(--r); background: var(--stone); border: 1px solid var(--line); transition: transform .2s, box-shadow .2s; }
+    .who-c:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .who-c span { font-size: 30px; display: block; margin-bottom: 10px; }
+    .who-c h3 { font-size: 18px; } .who-c p { color: var(--slate); font-size: 14.5px; margin: 0; }
+    .calc { background: linear-gradient(180deg, var(--stone), #fff); }
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+    .sl { margin-top: 22px; }
+    .sl label { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+    .sl label b { color: var(--moss); font-family: Outfit; font-size: 18px; white-space: nowrap; }
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px; background: var(--stone-2); border: 0; padding: 0; margin-top: 12px; accent-color: var(--moss); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--moss); border: 4px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); cursor: pointer; }
+    input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--moss); border: 4px solid #fff; cursor: pointer; }
+    .calc-out { background: var(--ink); color: #fff; border-radius: 24px; padding: 36px; box-shadow: 0 30px 60px rgba(31,41,51,.25); display: flex; flex-direction: column; }
+    .calc-out small { color: #9AA5B1; font-size: 14px; }
+    .calc-out b { font-family: Outfit; font-size: clamp(34px, 4.5vw, 52px); line-height: 1.1; margin: 4px 0 2px; color: #F5B58A; }
+    .calc-out b.gain { color: #7FC4A4; }
+    .calc-out > span { color: #CBD2D9; margin-bottom: 22px; }
+    .calc-out .btn { justify-content: center; }
+    .calc-sep { height: 1px; background: rgba(255,255,255,.1); margin: 18px 0; }
+    .calc-note { font-size: 12px; color: #7B8794; margin: 14px 0 0; }
+    .cta-band { background: linear-gradient(120deg, #2F6F57, #1d4a3a); color: #fff; padding: 70px 0; position: relative; overflow: hidden; }
+    .cta-band::after { content: ''; position: absolute; right: -60px; top: -60px; width: 280px; height: 280px; background: rgba(255,255,255,.06); clip-path: polygon(30% 0, 80% 10%, 100% 55%, 70% 100%, 15% 95%, 0 45%); }
+    .cta-inner { text-align: center; position: relative; z-index: 1; }
+    .cta-inner h2 { color: #fff; } .cta-inner h2 em { background: none; color: #CFE5D9; -webkit-text-fill-color: #CFE5D9; }
+    .cta-inner p { color: #E4F0EA; font-size: 18px; margin-bottom: 26px; }
+    .book h2 { text-transform: none; }
+    .sticky-cta { display: none; }
+    @media (max-width: 900px) {
+      .desk, .desk.in, .desk:hover { transform: none; } .who-grid { grid-template-columns: 1fr 1fr; } .calc-grid { grid-template-columns: 1fr; gap: 32px; }
+      .sticky-cta { display: block; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 60; text-align: center; background: var(--moss); color: #fff; padding: 15px; border-radius: 999px; font-weight: 700; text-decoration: none; box-shadow: 0 10px 30px rgba(0,0,0,.3); transform: translateY(150%); transition: transform .3s; }
+      .sticky-cta.show { transform: none; }
+      footer { padding-bottom: 90px; }
+    }
+    @media (max-width: 520px) { .who-grid { grid-template-columns: 1fr; } .desk-kpis b { font-size: 16px; } .desk-flow .node { font-size: 10.5px; padding: 8px 4px; } .desk-flow .arrow { width: 8px; } }
+    @media (prefers-reduced-motion: reduce) { .track, .glow, .pill .dot { animation: none; } }
   </style>
 </head>
 <body>
@@ -199,39 +287,57 @@
     <nav class="menu">
       <a href="#expertise">Expertise</a>
       <a href="#services">Services</a>
-      <a href="#methode">Méthode</a>
+      <a href="#pourqui">Pour qui</a>
+      <a href="#calcul">Calcul</a>
       <a href="#faq">FAQ</a>
-      <a class="btn primary" href="#diagnostic">Diagnostic gratuit</a>
+      <a class="btn primary" href="#diagnostic">Réserver un appel</a>
     </nav>
   </div>
 </header>
 
 <main>
   <section class="hero">
-    <svg class="rock-bg" viewBox="4 4 56 58" aria-hidden="true"><polygon points="18,18 34,8 52,16 56,38 44,56 22,58 10,40" fill="#1F2933"/></svg>
+    <div class="glow g1"></div><div class="glow g2"></div>
     <div class="wrap hero-grid">
       <div class="reveal">
-        <span class="eyebrow">Automatisation et IA pour les PME du Québec</span>
-        <h1>Moins de paperasse.<br><em>Plus de contrats.</em></h1>
-        <p class="lead">Soumissions faites à la main, appels manqués, suivis oubliés, fichiers Excel partout… On automatise ce qui vous fait perdre du temps et de l’argent, avec des outils simples que votre équipe va vraiment utiliser.</p>
+        <span class="pill"><span class="dot"></span>Automatisation et IA · PME du Québec</span>
+        <h1>Automatisez la paperasse.<br><em>Gagnez des heures et des contrats.</em></h1>
+        <p class="lead">Soumissions faites à la main, appels manqués, suivis oubliés, fichiers Excel partout… On met l’IA au travail <b>pour que votre équipe se concentre sur ce qui rapporte</b>.</p>
         <div class="ctas">
-          <a class="btn primary" href="#diagnostic">Réserver mon diagnostic gratuit →</a>
-          <a class="btn ghost" href="#services">Voir les services</a>
+          <a class="btn primary big" href="#diagnostic">Réserver un appel gratuit →</a>
+          <a class="btn glass" href="#calcul">Calculer mes pertes</a>
         </div>
-        <p class="reassure">30 minutes · sans engagement · en personne en Mauricie ou en visio</p>
+        <ul class="hero-ticks"><li>30 minutes</li><li>Sans engagement</li><li>En Mauricie ou en visio</li></ul>
       </div>
-      <div class="mock reveal" aria-label="Exemple de diagnostic">
-        <span class="tag">Exemple de diagnostic</span>
-        <h4>Entreprise de construction · 8 employés</h4>
-        <div class="mrow"><span>Soumissions préparées à la main</span><b>− 4 h/sem.</b></div>
-        <div class="mrow"><span>Appels manqués sur les chantiers</span><b>3 /sem.</b></div>
-        <div class="mrow"><span>Relances clients oubliées</span><b>− 2 h/sem.</b></div>
-        <div class="mrow"><span>Factures saisies deux fois</span><b>− 1,5 h/sem.</b></div>
-        <div class="mtotal"><span>Temps récupéré</span><b>≈ 360 h / an</b></div>
-        <small>Exemple fictif à titre indicatif. Votre diagnostic est calculé avec vos propres chiffres.</small>
+      <div class="desk reveal" aria-label="Aperçu d’un tableau de bord automatisé (exemple)">
+        <div class="desk-bar"><i></i><i></i><i></i><span>Tableau de bord · exemple</span></div>
+        <div class="desk-body">
+          <div class="desk-kpis">
+            <div><small>Heures récupérées</small><b data-count="7.5" data-suffix=" h/sem.">0</b></div>
+            <div><small>Appels rappelés</small><b data-count="100" data-suffix=" %">0</b></div>
+            <div><small>Soumissions</small><b data-count="3" data-prefix="× ">0</b></div>
+          </div>
+          <div class="desk-flow">
+            <div class="node">📞 Appel manqué</div><div class="arrow"></div>
+            <div class="node ai">🤖 Réponse IA en 30 s</div><div class="arrow"></div>
+            <div class="node ok">📅 Rendez-vous fixé</div>
+          </div>
+          <div class="desk-list">
+            <div><span class="st ok"></span>Soumission envoyée · Toiture, Trois-Rivières<em>auto</em></div>
+            <div><span class="st ok"></span>Relance client J+3 envoyée<em>auto</em></div>
+            <div><span class="st wip"></span>Rapport d’entretien en rédaction<em>IA</em></div>
+          </div>
+        </div>
+        <small class="desk-note">Illustration d’exemple</small>
       </div>
     </div>
   </section>
+
+  <div class="marquee-wrap" aria-label="Outils que nous connectons">
+    <p class="marquee-title">On connecte l’IA aux outils que vous utilisez déjà</p>
+    <div class="marquee"><div class="track"><span>Gmail</span><span>Outlook</span><span>Microsoft 365</span><span>Google Workspace</span><span>Excel</span><span>Google Sheets</span><span>QuickBooks</span><span>Sage 50</span><span>Teams</span><span>WhatsApp</span><span>Calendly</span><span>Twilio</span><span>n8n</span><span>Make</span><span>Zapier</span><span>HubSpot</span><span>Slack</span><span>Notion</span><span>Gmail</span><span>Outlook</span><span>Microsoft 365</span><span>Google Workspace</span><span>Excel</span><span>Google Sheets</span><span>QuickBooks</span><span>Sage 50</span><span>Teams</span><span>WhatsApp</span><span>Calendly</span><span>Twilio</span><span>n8n</span><span>Make</span><span>Zapier</span><span>HubSpot</span><span>Slack</span><span>Notion</span></div></div>
+  </div>
+
 
   <div class="trust">
     <div class="wrap">
@@ -249,26 +355,26 @@
   <section id="expertise">
     <div class="wrap center">
       <span class="eyebrow">Notre expertise</span>
-      <h2 class="reveal">Des solutions concrètes, pas des gadgets</h2>
+      <h2 class="reveal">Des solutions <em>concrètes</em>, pas des gadgets</h2>
       <p class="lead reveal">On parle votre langage : chantier, atelier, bureau. La technologie reste en arrière-plan ; ce qui compte, ce sont les heures et les contrats récupérés.</p>
     </div>
     <div class="wrap cards">
       <div class="card reveal">
         <div class="ic">⚙️</div>
         <h3>Automatisation des tâches</h3>
-        <p>Les tâches répétitives se font toutes seules : de la demande du client jusqu’à la facture.</p>
+        <p>Les tâches répétitives se font <b>toutes seules</b> : de la demande du client jusqu’à la facture.</p>
         <ul><li>Soumissions et factures générées</li><li>Relances et rappels automatiques</li><li>Fini la double saisie entre logiciels</li></ul>
       </div>
       <div class="card reveal">
         <div class="ic">🧩</div>
         <h3>Outils sur mesure</h3>
-        <p>Quand Excel ne suffit plus : un outil simple, fait pour votre façon de travailler.</p>
+        <p>Quand Excel ne suffit plus : un outil simple, <b>fait pour votre façon de travailler</b>.</p>
         <ul><li>Gestionnaire de projets et de chantiers</li><li>Suivi de maintenance (GMAO légère)</li><li>Tableaux de bord en temps réel</li></ul>
       </div>
       <div class="card reveal">
         <div class="ic">🤖</div>
         <h3>Assistants IA</h3>
-        <p>Une IA qui travaille pour vous, encadrée et vérifiée, jamais laissée sans contrôle.</p>
+        <p>Une IA qui travaille pour vous, <b>encadrée et vérifiée</b>, jamais laissée sans contrôle.</p>
         <ul><li>Réponse aux appels et aux courriels</li><li>Prise de rendez-vous 24 h/24</li><li>Rédaction de rapports et de résumés</li></ul>
       </div>
     </div>
@@ -277,7 +383,7 @@
   <section class="services" id="services">
     <div class="wrap center">
       <span class="eyebrow">Nos services</span>
-      <h2 class="reveal">Commencez petit. Voyez le gain. Grandissez.</h2>
+      <h2 class="reveal">Commencez petit. <em>Voyez le gain.</em> Grandissez.</h2>
     </div>
     <div class="wrap">
       <div class="svc reveal">
@@ -325,10 +431,46 @@
     </div>
   </section>
 
+  <section class="who" id="pourqui">
+    <div class="wrap center">
+      <span class="eyebrow">Pour qui</span>
+      <h2 class="reveal">Fait pour les PME <em>qui travaillent sur le terrain</em></h2>
+    </div>
+    <div class="wrap who-grid">
+      <div class="who-c reveal"><span>🏗️</span><h3>Construction et services</h3><p>Soumissions, appels de clients, suivis de chantiers, factures.</p></div>
+      <div class="who-c reveal"><span>🏭</span><h3>Usines et maintenance</h3><p>Bons de travail, entretien préventif, pièces, rapports d’intervention.</p></div>
+      <div class="who-c reveal"><span>🚚</span><h3>Transport et logistique</h3><p>Répartition, confirmations, suivis clients, documents de livraison.</p></div>
+      <div class="who-c reveal"><span>💼</span><h3>Bureaux et services pros</h3><p>Courriels répétitifs, prise de rendez-vous, saisie et classement.</p></div>
+    </div>
+  </section>
+
+  <section class="calc" id="calcul">
+    <div class="wrap calc-grid">
+      <div class="reveal">
+        <span class="eyebrow">Calcul express</span>
+        <h2>Combien vous coûtent <em>vos tâches répétitives</em>?</h2>
+        <p class="lead">Bougez les curseurs. C’est une estimation rapide : le diagnostic gratuit la précise avec vos vrais chiffres.</p>
+        <div class="sl"><label for="c-h">Heures perdues par semaine (toute l’équipe) <b id="v-h">10 h</b></label><input type="range" id="c-h" min="1" max="60" value="10"></div>
+        <div class="sl"><label for="c-t">Coût horaire moyen (salaire et charges) <b id="v-t">35 $</b></label><input type="range" id="c-t" min="20" max="90" value="35"></div>
+        <div class="sl"><label for="c-a">Part automatisable <b id="v-a">60 %</b></label><input type="range" id="c-a" min="20" max="90" step="5" value="60"></div>
+      </div>
+      <div class="calc-out reveal">
+        <small>Ce que ces tâches vous coûtent par année</small>
+        <b id="o-perte">0 $</b>
+        <div class="calc-sep"></div>
+        <small>Ce que l’automatisation pourrait récupérer</small>
+        <b class="gain" id="o-gain">0 $</b>
+        <span id="o-h">0 heures par année</span>
+        <a class="btn primary big" href="#diagnostic">Valider avec un appel gratuit →</a>
+        <p class="calc-note">Estimation basée sur 48 semaines travaillées. Ce n’est pas une promesse de résultat.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="methode">
     <div class="wrap center">
       <span class="eyebrow">Notre méthode</span>
-      <h2 class="reveal">Solide comme la pierre, en trois étapes</h2>
+      <h2 class="reveal">Solide comme la pierre, <em>en trois étapes</em></h2>
     </div>
     <div class="wrap method">
       <div class="reveal"><h3>Diagnostic</h3><p>On comprend votre réalité et on chiffre le gain possible. Vous décidez ensuite, sans pression.</p></div>
@@ -379,10 +521,18 @@
     </div>
   </section>
 
+  <div class="cta-band">
+    <div class="wrap cta-inner reveal">
+      <h2>Prêt à récupérer <em>vos heures perdues</em>?</h2>
+      <p>Un appel de 30 minutes, gratuit, pour voir ce qu’on peut automatiser chez vous.</p>
+      <a class="btn light big" href="#diagnostic">Réserver un appel gratuit →</a>
+    </div>
+  </div>
+
   <section id="faq">
     <div class="wrap center">
       <span class="eyebrow">Questions fréquentes</span>
-      <h2 class="reveal">Vous vous posez sûrement ces questions</h2>
+      <h2 class="reveal">Vos questions, <em>nos réponses</em></h2>
     </div>
     <div class="faq">
       <details><summary>Je ne connais rien à l’IA. Est-ce que c’est pour moi?</summary><p>Oui, justement. Vous n’avez rien à apprendre de technique : on part de vos tâches de tous les jours et on vous livre un outil simple, avec une formation pour votre équipe.</p></details>
@@ -418,6 +568,8 @@
   </div>
 </footer>
 
+<a class="sticky-cta" href="#diagnostic">Réserver un appel gratuit →</a>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/config.js"></script>
 <script>
@@ -442,6 +594,36 @@
   addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 }) : null;
   document.querySelectorAll('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('in'));
+
+  // Calcul express
+  const fmt$ = n => Math.round(n).toLocaleString('fr-CA') + ' $';
+  const ch = document.getElementById('c-h'), ct = document.getElementById('c-t'), ca = document.getElementById('c-a');
+  function calc() {
+    const h = +ch.value, t = +ct.value, a = +ca.value;
+    document.getElementById('v-h').textContent = h + ' h'; document.getElementById('v-t').textContent = t + ' $'; document.getElementById('v-a').textContent = a + ' %';
+    const perte = h * t * 48, gain = perte * a / 100;
+    document.getElementById('o-perte').textContent = fmt$(perte);
+    document.getElementById('o-gain').textContent = fmt$(gain);
+    document.getElementById('o-h').textContent = Math.round(h * 48 * a / 100).toLocaleString('fr-CA') + ' heures récupérées par année';
+  }
+  [ch, ct, ca].forEach(x => x.addEventListener('input', calc)); calc();
+
+  // Compteurs animés du tableau de bord d'exemple
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const end = +el.dataset.count, pre = el.dataset.prefix || '', suf = el.dataset.suffix || '', dec = String(end).includes('.') ? 1 : 0;
+    const fmtN = v => pre + v.toLocaleString('fr-CA', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = fmtN(end); return; }
+    const t0 = performance.now(), dur = 1600;
+    const step = now => { const k = Math.min(1, (now - t0) / dur); el.textContent = fmtN(end * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+
+  // Bouton fixe sur mobile (caché quand le formulaire est visible)
+  const sticky = document.querySelector('.sticky-cta'), formSec = document.getElementById('diagnostic');
+  addEventListener('scroll', () => {
+    const r = formSec.getBoundingClientRect();
+    sticky.classList.toggle('show', scrollY > 600 && !(r.top < innerHeight && r.bottom > 0));
+  }, { passive: true });
 
   // Formulaire → table « leads » de Supabase → section Prospection du tableau de bord
   const form = document.getElementById('lead-form'), msg = document.getElementById('f-msg');
