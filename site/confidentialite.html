@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Politique de confidentialité — Stony Automation</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #1F2933; background: #F5F3EF; line-height: 1.65; }
+    main { width: min(780px, 92vw); margin: 0 auto; padding: 50px 0 80px; }
+    article { background: #fff; border-radius: 18px; padding: clamp(24px, 5vw, 50px); border: 1px solid #E4DED4; }
+    h1, h2 { font-family: Outfit, sans-serif; } h1 { font-size: 34px; margin-top: 0; } h2 { font-size: 20px; margin-top: 30px; }
+    a { color: #2F6F57; } .muted { color: #7B8794; font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <p><a href="./">← Retour au site</a></p>
+  <article>
+    <h1>Politique de confidentialité</h1>
+    <p class="muted">Dernière mise à jour : <span id="maj">27 novembre 2026</span></p>
+
+    <p>Stony Automation (« nous ») respecte la <i>Loi sur la protection des renseignements personnels dans le secteur privé</i> du Québec (Loi 25). Cette page explique quels renseignements nous recueillons par ce site et ce que nous en faisons.</p>
+
+    <h2>Responsable de la protection des renseignements personnels</h2>
+    <p>Taoufik, fondateur de Stony Automation, Trois-Rivières (Québec). Pour toute question ou demande : <span id="resp-contact">par le formulaire du site</span>.</p>
+
+    <h2>Renseignements recueillis</h2>
+    <p>Lorsque vous remplissez le formulaire : votre nom, le nom de votre entreprise, votre courriel, votre téléphone (facultatif), votre secteur, la taille de votre entreprise et la description de votre besoin. Nous ne recueillons aucun renseignement sensible et n’utilisons pas de témoins (cookies) publicitaires.</p>
+
+    <h2>Pourquoi nous les utilisons</h2>
+    <p>Uniquement pour vous recontacter au sujet de votre demande et, si vous le souhaitez, préparer un diagnostic ou une proposition. Nous ne vendons, ne louons et n’échangeons jamais vos renseignements.</p>
+
+    <h2>Conservation et sécurité</h2>
+    <p>Vos renseignements sont conservés dans une base de données sécurisée (Supabase) dont l’accès est limité au responsable. Certains fournisseurs techniques peuvent héberger les données à l’extérieur du Québec ; nous choisissons des fournisseurs offrant un niveau de protection adéquat. Nous conservons vos renseignements le temps nécessaire au suivi de votre demande, puis au plus 24 mois sans relation d’affaires, avant de les supprimer.</p>
+
+    <h2>Vos droits</h2>
+    <p>Vous pouvez en tout temps demander à consulter, corriger ou supprimer vos renseignements, ou retirer votre consentement. Écrivez-nous et nous répondrons dans un délai de 30 jours.</p>
+
+    <h2>Communications</h2>
+    <p>Nous vous écrivons seulement au sujet de votre demande. Chaque message commercial contient un moyen simple de ne plus en recevoir.</p>
+  </article>
+</main>
+<script>
+  // Mets ici le même courriel que dans index.html (CONTACT.courriel)
+  const COURRIEL = '';
+  if (COURRIEL) document.getElementById('resp-contact').innerHTML = `<a href="mailto:${COURRIEL}">${COURRIEL}</a>`;
+</script>
+</body>
+</html>

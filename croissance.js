@@ -8,7 +8,7 @@
 
 const ETAPES = ['À contacter', 'Contacté', 'Rendez-vous prévu', 'Diagnostic proposé', 'Client', 'Pas intéressé'];
 const ETAPES_ACTIVES = ETAPES.filter(e => !['Client', 'Pas intéressé'].includes(e));
-const SOURCES = ['Réseau perso', 'Ancien collègue', 'LinkedIn', 'Référence', 'Événement', 'Autre'];
+const SOURCES = ['Réseau perso', 'Ancien collègue', 'LinkedIn', 'Référence', 'Site web', 'Événement', 'Autre'];
 const CONSENTEMENTS = ['Relation existante', 'Consentement exprès', 'Consentement implicite (publié)', 'Inconnu'];
 const TYPES_CONTACT = ['Appel', 'Courriel', 'LinkedIn', 'SMS', 'Rencontre', 'Note'];
 const TYPES_MESSAGE = ['Premier contact', 'Relance', 'Après la rencontre', 'Proposer un diagnostic', 'Remerciement'];
@@ -78,7 +78,7 @@ function modelOf(a) { return a.model || db.provider.modeleDefaut; }
   decorateNav = function () {
     _dn();
     const link = $('#nav a[href="#prospection"]'); if (!link) return;
-    const n = dueProspects().length;
+    const n = dueProspects().length + LEADS.list.length;
     let b = $('.nav-badge', link);
     if (n) { if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; link.appendChild(b); } b.textContent = n; }
     else if (b) b.remove();
@@ -110,9 +110,11 @@ VIEWS.prospection = () => {
     <div class="card kpi"><div class="label">Prospects actifs</div><div class="value">${actifs.length}</div><div class="sub">${db.prospects.filter(p => p.etape === 'Rendez-vous prévu').length} rendez-vous prévu(s)</div></div>
     <div class="card kpi"><div class="label">Valeur du pipeline</div><div class="value">${money(pipe)}</div><div class="sub">taux de conversion : ${fermes ? pct(clients, fermes) : 0} %</div></div>
   </div>
+  ${leadsCard()}
   ${due.length ? `<div class="card relances"><h3>📞 Relances à faire</h3><ul class="list">${due.map(p => `<li class="clickable" data-pr-open="${p.id}"><span><b>${esc(p.entreprise)}</b>${p.contact ? ' · ' + esc(p.contact) : ''} ${badge(p.etape)}</span><span class="muted small">${daysUntil(p.prochaineRelance) < 0 ? `<span class="badge red">${-daysUntil(p.prochaineRelance)} j de retard</span>` : 'aujourd’hui'}</span></li>`).join('')}</ul></div>` : ''}
   <div class="toolbar">
     <input class="pr-search" placeholder="Rechercher un prospect…" value="${esc(PR.q)}">
+    <a class="btn" href="/site/" target="_blank" rel="noopener">🌐 Mon site</a>
     <button class="btn" data-pr-import>⬆ Importer (CSV)</button>
     <button class="btn primary" data-add="prospects">+ Prospect</button>
   </div>
@@ -159,6 +161,61 @@ function setEtape(p, etape) {
   p.historique.push({ id: uid(), date: todayISO(), type: 'Note', texte: `Étape → ${etape}` });
   save(); toast(`Étape : ${etape}`);
 }
+
+/* ---------- 📥 Demandes reçues par le site web (table « leads ») ---------- */
+const LEADS = { list: [], missing: false, busy: false };
+async function fetchLeads() {
+  if (!Cloud.client || !Cloud.user) return;
+  try {
+    const { data, error } = await Cloud.client.from('leads').select('*').eq('traite', false).order('created_at', { ascending: true });
+    if (error) { LEADS.missing = /leads|relation|schema cache|42P01|PGRST205/i.test(error.message + (error.code || '')); LEADS.list = []; }
+    else { LEADS.missing = false; LEADS.list = data || []; }
+  } catch (e) { /* hors ligne : on réessaiera */ }
+  decorateNav();
+  if (location.hash === '#prospection' && $('#modal-backdrop').classList.contains('hidden') && !document.activeElement.matches('input,textarea,select')) render();
+}
+{
+  let started = false;
+  setInterval(() => { if (Cloud.user && !started) { started = true; fetchLeads(); } if (!Cloud.user) started = false; }, 1500);
+  setInterval(() => { if (Cloud.user && !window.AI_BUSY) fetchLeads(); }, 5 * 60 * 1000);
+}
+function leadsCard() {
+  if (LEADS.missing) return `<div class="info small">🌐 Pour recevoir les demandes de ton site directement ici, exécute une fois le fichier <b>supabase-leads.sql</b> dans Supabase (voir le README).</div>`;
+  if (!LEADS.list.length) return '';
+  return `<div class="card leads-card"><div class="toolbar" style="margin:0 0 6px"><h3 style="margin:0">📥 ${LEADS.list.length} nouvelle(s) demande(s) du site</h3><span class="sp"></span><button class="btn primary small" data-lead-all ${LEADS.busy ? 'disabled' : ''}>Tout ajouter au pipeline</button></div>
+    <ul class="list">${LEADS.list.map(l => `<li><span><b>${esc(l.entreprise)}</b> · ${esc(l.nom)}${l.secteur ? ' · ' + esc(l.secteur) : ''}${l.employes ? ' · ' + esc(l.employes) + ' employés' : ''}${l.besoin ? `<br><span class="muted small">« ${esc(String(l.besoin).slice(0, 180))}${String(l.besoin).length > 180 ? '…' : ''} »</span>` : ''}</span>
+      <span class="lead-act"><span class="muted small">${fmtDate(String(l.created_at).slice(0, 10))}</span><button class="btn small primary" data-lead-add="${l.id}" ${LEADS.busy ? 'disabled' : ''}>Ajouter</button><button class="btn small" data-lead-skip="${l.id}" title="Ignorer (spam)" ${LEADS.busy ? 'disabled' : ''}>Ignorer</button></span></li>`).join('')}</ul></div>`;
+}
+function leadToProspect(l) {
+  const mail = String(l.courriel || '').toLowerCase();
+  let p = mail && db.prospects.find(x => String(x.courriel || '').toLowerCase() === mail);
+  const sect = String(l.secteur || '');
+  const niche = sect.startsWith('Construction') ? 'Construction / services' : sect.startsWith('Usine') ? 'Usine / maintenance' : sect ? (sect.startsWith('Commerce') ? 'Admin PME' : 'Autre') : '';
+  const note = [l.besoin ? `Besoin (site) : ${l.besoin}` : '', l.employes ? `Employés : ${l.employes}` : ''].filter(Boolean).join('\n');
+  if (p) { p.historique.push({ id: uid(), date: todayISO(), type: 'Note', texte: 'Nouvelle demande reçue par le site web' }); if (note) p.notes = [p.notes, note].filter(Boolean).join('\n'); p.prochaineRelance = todayISO(); if (!isActiveProspect(p)) p.etape = 'À contacter'; return p; }
+  p = { id: uid(), ...defaults('prospects'), entreprise: l.entreprise, contact: l.nom, courriel: l.courriel, telephone: l.telephone || '', niche, source: 'Site web', consentement: 'Consentement exprès', etape: 'À contacter', prochaineRelance: todayISO(), notes: note, historique: [{ id: uid(), date: String(l.created_at || todayISO()).slice(0, 10), type: 'Note', texte: 'Demande reçue par le site web' }] };
+  db.prospects.push(p);
+  return p;
+}
+async function handleLeads(ids, add) {
+  if (LEADS.busy) return; LEADS.busy = true; render();
+  let n = 0, fail = 0;
+  for (const id of ids) {
+    const l = LEADS.list.find(x => x.id === id); if (!l) continue;
+    const { error } = await Cloud.client.from('leads').update({ traite: true }).eq('id', id);
+    if (error) { fail++; continue; }
+    if (add) leadToProspect(l);
+    LEADS.list = LEADS.list.filter(x => x.id !== id); n++;
+  }
+  LEADS.busy = false; save(); render();
+  toast(fail ? `⚠ ${fail} demande(s) non traitée(s) : réessaie` : add ? `${n} prospect(s) ajouté(s) · relance aujourd’hui ✓` : 'Demande ignorée');
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-lead-add],[data-lead-skip],[data-lead-all]'); if (!t) return;
+  if (t.dataset.leadAll !== undefined) handleLeads(LEADS.list.map(l => l.id), true);
+  else if (t.dataset.leadAdd) handleLeads([t.dataset.leadAdd], true);
+  else if (t.dataset.leadSkip) handleLeads([t.dataset.leadSkip], false);
+});
 
 /* ---------- Fiche prospect ---------- */
 function openProspect(id) {

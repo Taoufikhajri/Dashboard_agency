@@ -528,6 +528,9 @@ table.mdt th, table.mdt td { border: 1px solid var(--line); padding: 6px 8px; }
 .pcard .t { font-weight: 600; }
 .pcard .m { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .pcard .next { font-size: 12px; margin-top: 6px; background: #f6f7f9; padding: 5px 7px; border-radius: 6px; }
+.leads-card { margin-bottom: 14px; border-left: 4px solid var(--accent); }
+.leads-card li { gap: 12px; align-items: flex-start; }
+.lead-act { display: flex; gap: 6px; align-items: center; flex: none; }
 .relances { margin-bottom: 14px; border-left: 4px solid var(--bad); }
 .relances li { cursor: pointer; }
 .modal:has(.pr-head) { max-width: 920px; }

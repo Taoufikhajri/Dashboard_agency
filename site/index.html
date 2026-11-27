@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stony Automation — Automatisation et IA pour les PME du Québec</title>
+  <meta name="description" content="Stony Automation aide les PME de la Mauricie et du Québec à éliminer la paperasse, ne plus manquer d’appels et gagner des heures chaque semaine grâce à l’automatisation et à l’IA. Diagnostic gratuit.">
+  <meta property="og:title" content="Stony Automation — Moins de paperasse. Plus de contrats.">
+  <meta property="og:description" content="Automatisation et IA concrètes pour les PME du Québec. Diagnostic gratuit de 30 minutes.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#1F2933">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1F2933; --ink-2: #323F4B; --slate: #52606D; --muted: #7B8794;
+      --stone: #F5F3EF; --stone-2: #E9E4DB; --line: #E4DED4;
+      --moss: #2F6F57; --moss-2: #3F8F6E; --moss-soft: #E4F0EA; --clay: #B86B3A;
+      --r: 18px; --shadow: 0 10px 30px rgba(31,41,51,.08), 0 2px 6px rgba(31,41,51,.05);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--ink); background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { font-family: Outfit, Inter, sans-serif; line-height: 1.12; margin: 0 0 .5em; letter-spacing: -.01em; }
+    h1 { font-size: clamp(38px, 5.6vw, 66px); font-weight: 800; }
+    h2 { font-size: clamp(28px, 3.6vw, 42px); font-weight: 700; }
+    h3 { font-size: 21px; font-weight: 600; }
+    p { margin: 0 0 1em; }
+    a { color: var(--moss); }
+    .wrap { width: min(1140px, 92vw); margin: 0 auto; }
+    .eyebrow { display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--moss); margin-bottom: 14px; }
+    .lead { font-size: 19px; color: var(--slate); max-width: 640px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 15px 26px; border-radius: 999px; font-weight: 600; font-size: 16px; text-decoration: none; border: 0; cursor: pointer; transition: transform .15s, box-shadow .15s, background .15s; font-family: inherit; }
+    .btn.primary { background: var(--moss); color: #fff; box-shadow: 0 8px 20px rgba(47,111,87,.28); }
+    .btn.primary:hover { background: #275e4a; transform: translateY(-2px); }
+    .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+    .btn.ghost:hover { border-color: var(--ink); }
+    .btn.light { background: #fff; color: var(--ink); }
+    section { padding: 96px 0; scroll-margin-top: 74px; }
+
+    /* En-tête */
+    header { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.86); backdrop-filter: blur(12px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+    header.scrolled { border-bottom-color: var(--line); }
+    .nav { display: flex; align-items: center; justify-content: space-between; height: 74px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+    .logo b { font-family: Outfit; font-size: 21px; font-weight: 700; }
+    .logo span { font-family: Outfit; font-size: 21px; font-weight: 500; color: var(--moss); }
+    .menu { display: flex; gap: 30px; align-items: center; }
+    .menu a { text-decoration: none; color: var(--slate); font-weight: 500; font-size: 15px; }
+    .menu a:hover { color: var(--ink); }
+    .menu .btn { padding: 11px 20px; font-size: 14px; color: #fff; }
+
+    /* Accroche */
+    .hero { padding: 80px 0 90px; background:
+      radial-gradient(900px 500px at 85% 10%, var(--moss-soft), transparent 60%),
+      linear-gradient(180deg, #fff, var(--stone)); position: relative; overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 56px; align-items: center; }
+    .hero h1 em { font-style: normal; color: var(--moss); }
+    .hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+    .hero .reassure { margin-top: 18px; color: var(--muted); font-size: 14px; }
+    .mock { background: #fff; border-radius: 22px; box-shadow: var(--shadow); padding: 26px; border: 1px solid var(--line); position: relative; }
+    .mock .tag { position: absolute; top: -12px; left: 22px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; }
+    .mock h4 { margin: 6px 0 16px; font-family: Outfit; font-size: 18px; }
+    .mrow { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
+    .mrow b { font-family: Outfit; }
+    .mtotal { margin-top: 16px; background: var(--moss); color: #fff; border-radius: 14px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .mtotal b { font-family: Outfit; font-size: 28px; }
+    .mock small { display: block; margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .rock-bg { position: absolute; right: -120px; bottom: -160px; width: 460px; opacity: .06; pointer-events: none; }
+
+    /* Bandeau de confiance */
+    .trust { padding: 30px 0; background: var(--ink); color: #E4DED4; }
+    .trust .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .trust div { display: flex; gap: 12px; align-items: center; font-size: 14.5px; }
+    .trust .ic { width: 40px; height: 40px; flex: none; border-radius: 12px; background: rgba(255,255,255,.07); display: grid; place-items: center; font-size: 19px; }
+    .trust b { color: #fff; display: block; font-size: 15px; }
+
+    /* Promesse */
+    .promise { text-align: center; padding: 90px 0 30px; }
+    .promise p { font-size: clamp(22px, 2.6vw, 30px); font-family: Outfit; font-weight: 500; max-width: 860px; margin: 0 auto; line-height: 1.35; }
+    .promise p mark { background: linear-gradient(transparent 62%, #CFE5D9 62%); color: inherit; }
+
+    /* Expertise */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 46px; }
+    .card { background: var(--stone); border-radius: var(--r); padding: 30px; border: 1px solid var(--line); transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-4px); box-shadow: var(--shadow); background: #fff; }
+    .card .ic { width: 52px; height: 52px; border-radius: 14px; background: var(--moss-soft); display: grid; place-items: center; font-size: 25px; margin-bottom: 18px; }
+    .card p { color: var(--slate); margin: 0 0 14px; }
+    .card ul { margin: 0; padding-left: 18px; color: var(--slate); font-size: 14.5px; }
+    .center { text-align: center; } .center .lead { margin: 0 auto; }
+
+    /* Services */
+    .services { background: var(--stone); }
+    .svc { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-top: 64px; }
+    .svc.rev .svc-visual { order: 2; }
+    .svc-visual { border-radius: 24px; min-height: 340px; background: var(--ink); position: relative; overflow: hidden; display: grid; place-items: center; padding: 30px; }
+    .svc-visual.moss { background: linear-gradient(150deg, var(--moss), #1d4a3a); }
+    .chat { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { padding: 11px 15px; border-radius: 16px; font-size: 14px; max-width: 85%; }
+    .bubble.in { background: rgba(255,255,255,.1); color: #F5F3EF; border-bottom-left-radius: 4px; }
+    .bubble.out { background: #fff; color: var(--ink); align-self: flex-end; border-bottom-right-radius: 4px; }
+    .bubble.sys { align-self: center; background: rgba(255,255,255,.12); color: #E4F0EA; font-size: 12px; border-radius: 999px; }
+    .steps-mini { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
+    .steps-mini div { background: rgba(255,255,255,.1); color: #fff; padding: 14px 16px; border-radius: 14px; display: flex; gap: 12px; align-items: center; font-size: 15px; }
+    .steps-mini span { width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--moss); display: grid; place-items: center; font-weight: 700; flex: none; font-family: Outfit; }
+    .checks { list-style: none; padding: 0; margin: 18px 0 26px; }
+    .checks li { padding: 7px 0 7px 32px; position: relative; color: var(--ink-2); }
+    .checks li::before { content: ''; position: absolute; left: 0; top: 11px; width: 20px; height: 20px; border-radius: 50%; background: var(--moss) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat; }
+    .price { display: inline-block; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 14px; color: var(--slate); margin-bottom: 20px; }
+    .price b { color: var(--ink); }
+
+    /* Méthode */
+    .method { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 46px; counter-reset: s; }
+    .method div { padding: 28px; border-radius: var(--r); border: 1px solid var(--line); position: relative; }
+    .method div::before { counter-increment: s; content: '0' counter(s); font-family: Outfit; font-weight: 800; font-size: 46px; color: var(--stone-2); display: block; line-height: 1; margin-bottom: 12px; }
+    .method p { color: var(--slate); margin: 0; }
+
+    /* Réservation + formulaire */
+    .book { background: var(--ink); color: #F5F3EF; position: relative; overflow: hidden; }
+    .book-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: start; }
+    .book h2 { color: #fff; }
+    .book .lead { color: #CBD2D9; }
+    .book .checks li { color: #E4DED4; }
+    .contact-line { margin-top: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+    .contact-line a { color: #fff; text-decoration: none; }
+    form { background: #fff; color: var(--ink); border-radius: 22px; padding: 30px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+    .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .f-grid .full { grid-column: 1 / -1; }
+    label { font-size: 13.5px; font-weight: 600; display: block; color: var(--ink-2); }
+    input, select, textarea { width: 100%; margin-top: 6px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; font: inherit; font-size: 15px; color: var(--ink); background: #fff; transition: border-color .15s; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--moss); }
+    textarea { min-height: 96px; resize: vertical; }
+    .consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 13px; color: var(--slate); margin-top: 4px; }
+    .consent input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--moss); }
+    .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    form .btn { width: 100%; justify-content: center; margin-top: 18px; }
+    .f-msg { margin-top: 14px; font-size: 14px; border-radius: 12px; padding: 12px 14px; display: none; }
+    .f-msg.ok { display: block; background: var(--moss-soft); color: #1d4a3a; }
+    .f-msg.err { display: block; background: #FDECEC; color: #8A1C1C; }
+
+    /* FAQ */
+    .faq { max-width: 820px; margin: 40px auto 0; }
+    details { border-bottom: 1px solid var(--line); padding: 6px 0; }
+    summary { list-style: none; cursor: pointer; padding: 18px 40px 18px 0; font-family: Outfit; font-size: 19px; font-weight: 600; position: relative; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: '+'; position: absolute; right: 6px; top: 12px; font-size: 28px; font-weight: 400; color: var(--moss); transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { color: var(--slate); padding: 0 0 18px; margin: 0; }
+
+    /* Pied de page */
+    footer { background: #161E26; color: #9AA5B1; padding: 60px 0 30px; font-size: 14px; }
+    .f-cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 40px; }
+    footer h4 { color: #fff; font-family: Outfit; font-size: 16px; margin: 0 0 14px; }
+    footer a { color: #CBD2D9; text-decoration: none; display: block; padding: 3px 0; }
+    footer a:hover { color: #fff; }
+    footer .logo b, footer .logo span { color: #fff; } footer .logo span { color: #7FC4A4; }
+    .f-bottom { border-top: 1px solid rgba(255,255,255,.08); margin-top: 40px; padding-top: 22px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+    /* Apparition au défilement */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+
+    @media (max-width: 900px) {
+      section { padding: 70px 0; }
+      .menu a:not(.btn) { display: none; }
+      .hero-grid, .svc, .book-grid { grid-template-columns: 1fr; gap: 36px; }
+      .svc.rev .svc-visual { order: 0; }
+      .cards, .method { grid-template-columns: 1fr; }
+      .trust .wrap { grid-template-columns: 1fr 1fr; }
+      .f-cols { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .f-grid { grid-template-columns: 1fr; }
+      .trust .wrap { grid-template-columns: 1fr; }
+      .logo b, .logo span { font-size: 18px; }
+      .menu .btn { padding: 9px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="top">
+  <div class="wrap nav">
+    <a class="logo" href="#top" aria-label="Stony Automation — accueil">
+      <svg width="36" height="36" viewBox="4 4 56 58" aria-hidden="true">
+        <polygon points="18,18 34,8 30,28" fill="#CBD2D9"/><polygon points="34,8 52,16 42,36 30,28" fill="#9AA5B1"/>
+        <polygon points="52,16 56,38 42,36" fill="#7B8794"/><polygon points="56,38 44,56 42,36" fill="#52606D"/>
+        <polygon points="44,56 22,58 26,44 42,36" fill="#3E4C59"/><polygon points="22,58 10,40 26,44" fill="#52606D"/>
+        <polygon points="10,40 18,18 30,28 26,44" fill="#7B8794"/><polygon points="30,28 42,36 26,44" fill="#3F8F6E"/>
+        <polygon points="30,28 36,32 28.5,34" fill="rgba(255,255,255,.28)"/>
+      </svg>
+      <span><b>Stony</b> <span>Automation</span></span>
+    </a>
+    <nav class="menu">
+      <a href="#expertise">Expertise</a>
+      <a href="#services">Services</a>
+      <a href="#methode">Méthode</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn primary" href="#diagnostic">Diagnostic gratuit</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <svg class="rock-bg" viewBox="4 4 56 58" aria-hidden="true"><polygon points="18,18 34,8 52,16 56,38 44,56 22,58 10,40" fill="#1F2933"/></svg>
+    <div class="wrap hero-grid">
+      <div class="reveal">
+        <span class="eyebrow">Automatisation et IA pour les PME du Québec</span>
+        <h1>Moins de paperasse.<br><em>Plus de contrats.</em></h1>
+        <p class="lead">Soumissions faites à la main, appels manqués, suivis oubliés, fichiers Excel partout… On automatise ce qui vous fait perdre du temps et de l’argent, avec des outils simples que votre équipe va vraiment utiliser.</p>
+        <div class="ctas">
+          <a class="btn primary" href="#diagnostic">Réserver mon diagnostic gratuit →</a>
+          <a class="btn ghost" href="#services">Voir les services</a>
+        </div>
+        <p class="reassure">30 minutes · sans engagement · en personne en Mauricie ou en visio</p>
+      </div>
+      <div class="mock reveal" aria-label="Exemple de diagnostic">
+        <span class="tag">Exemple de diagnostic</span>
+        <h4>Entreprise de construction · 8 employés</h4>
+        <div class="mrow"><span>Soumissions préparées à la main</span><b>− 4 h/sem.</b></div>
+        <div class="mrow"><span>Appels manqués sur les chantiers</span><b>3 /sem.</b></div>
+        <div class="mrow"><span>Relances clients oubliées</span><b>− 2 h/sem.</b></div>
+        <div class="mrow"><span>Factures saisies deux fois</span><b>− 1,5 h/sem.</b></div>
+        <div class="mtotal"><span>Temps récupéré</span><b>≈ 360 h / an</b></div>
+        <small>Exemple fictif à titre indicatif. Votre diagnostic est calculé avec vos propres chiffres.</small>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust">
+    <div class="wrap">
+      <div><span class="ic">🛠️</span><span><b>15 ans sur le terrain</b>ingénierie et maintenance industrielle</span></div>
+      <div><span class="ic">📍</span><span><b>Basé à Trois-Rivières</b>au service des PME du Québec</span></div>
+      <div><span class="ic">📈</span><span><b>Gain chiffré d’avance</b>on calcule le retour avant de bâtir</span></div>
+      <div><span class="ic">🔒</span><span><b>Loi 25 respectée</b>vos données restent protégées</span></div>
+    </div>
+  </div>
+
+  <div class="promise wrap reveal">
+    <p>Notre règle est simple : on commence par <mark>chiffrer ce que vous perdez</mark>. Si l’automatisation ne vous rapporte pas clairement plus qu’elle ne coûte, <mark>on vous le dit</mark> — et on ne vous vend rien.</p>
+  </div>
+
+  <section id="expertise">
+    <div class="wrap center">
+      <span class="eyebrow">Notre expertise</span>
+      <h2 class="reveal">Des solutions concrètes, pas des gadgets</h2>
+      <p class="lead reveal">On parle votre langage : chantier, atelier, bureau. La technologie reste en arrière-plan ; ce qui compte, ce sont les heures et les contrats récupérés.</p>
+    </div>
+    <div class="wrap cards">
+      <div class="card reveal">
+        <div class="ic">⚙️</div>
+        <h3>Automatisation des tâches</h3>
+        <p>Les tâches répétitives se font toutes seules : de la demande du client jusqu’à la facture.</p>
+        <ul><li>Soumissions et factures générées</li><li>Relances et rappels automatiques</li><li>Fini la double saisie entre logiciels</li></ul>
+      </div>
+      <div class="card reveal">
+        <div class="ic">🧩</div>
+        <h3>Outils sur mesure</h3>
+        <p>Quand Excel ne suffit plus : un outil simple, fait pour votre façon de travailler.</p>
+        <ul><li>Gestionnaire de projets et de chantiers</li><li>Suivi de maintenance (GMAO légère)</li><li>Tableaux de bord en temps réel</li></ul>
+      </div>
+      <div class="card reveal">
+        <div class="ic">🤖</div>
+        <h3>Assistants IA</h3>
+        <p>Une IA qui travaille pour vous, encadrée et vérifiée, jamais laissée sans contrôle.</p>
+        <ul><li>Réponse aux appels et aux courriels</li><li>Prise de rendez-vous 24 h/24</li><li>Rédaction de rapports et de résumés</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="services" id="services">
+    <div class="wrap center">
+      <span class="eyebrow">Nos services</span>
+      <h2 class="reveal">Commencez petit. Voyez le gain. Grandissez.</h2>
+    </div>
+    <div class="wrap">
+      <div class="svc reveal">
+        <div class="svc-visual moss">
+          <div class="steps-mini">
+            <div><span>1</span>On observe vos tâches et vos irritants</div>
+            <div><span>2</span>On calcule les heures et l’argent perdus</div>
+            <div><span>3</span>Vous recevez un rapport et un plan clair</div>
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size:28px">Diagnostic d’automatisation</h3>
+          <p class="lead" style="font-size:17px">Une rencontre de 1 à 2 heures pour repérer ce qui vous coûte le plus cher, puis un rapport écrit avec le retour sur investissement de chaque piste.</p>
+          <ul class="checks">
+            <li>Inventaire de vos tâches manuelles et répétitives</li>
+            <li>Estimation des heures et des revenus récupérables</li>
+            <li>Recommandations classées de la plus rentable à la moins rentable</li>
+            <li>Vous gardez le rapport, même si vous ne continuez pas avec nous</li>
+          </ul>
+          <a class="btn primary" href="#diagnostic">Je veux mon diagnostic →</a>
+        </div>
+      </div>
+      <div class="svc rev reveal">
+        <div class="svc-visual">
+          <div class="chat">
+            <div class="bubble sys">📞 Appel manqué · 17 h 42</div>
+            <div class="bubble out">Bonjour! Ici Toitures Mauricie. On est sur un chantier : pour une soumission, quel est votre besoin et votre adresse?</div>
+            <div class="bubble in">Bardeaux à refaire, 1 étage, à Cap-de-la-Madeleine.</div>
+            <div class="bubble out">Parfait! Un estimateur peut passer jeudi à 10 h. Ça vous convient?</div>
+            <div class="bubble sys">✅ Rendez-vous ajouté au calendrier</div>
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size:28px">Implantation et assistant IA</h3>
+          <p class="lead" style="font-size:17px">On met en place les solutions retenues, on forme votre équipe et on reste là pour ajuster. Exemple : chaque appel manqué reçoit une réponse en quelques secondes.</p>
+          <ul class="checks">
+            <li>Mise en place clé en main avec vos outils actuels</li>
+            <li>Formation simple de votre équipe</li>
+            <li>Suivi mensuel et améliorations continues</li>
+            <li>Vous restez propriétaire de vos données</li>
+          </ul>
+          <a class="btn primary" href="#diagnostic">Parlons de votre projet →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="methode">
+    <div class="wrap center">
+      <span class="eyebrow">Notre méthode</span>
+      <h2 class="reveal">Solide comme la pierre, en trois étapes</h2>
+    </div>
+    <div class="wrap method">
+      <div class="reveal"><h3>Diagnostic</h3><p>On comprend votre réalité et on chiffre le gain possible. Vous décidez ensuite, sans pression.</p></div>
+      <div class="reveal"><h3>Prototype</h3><p>On commence par une seule automatisation, la plus rentable, pour que vous voyiez le résultat rapidement.</p></div>
+      <div class="reveal"><h3>Implantation</h3><p>On déploie, on forme votre équipe et on mesure les heures réellement gagnées.</p></div>
+    </div>
+  </section>
+
+  <section class="book" id="diagnostic">
+    <div class="wrap book-grid">
+      <div class="reveal">
+        <span class="eyebrow" style="color:#7FC4A4">Diagnostic gratuit de 30 minutes</span>
+        <h2>Combien d’heures perdez-vous chaque semaine?</h2>
+        <p class="lead">Dites-nous en quelques mots ce qui vous ralentit. On vous rappelle dans un délai de 24 h ouvrables pour fixer un appel ou une rencontre.</p>
+        <ul class="checks">
+          <li>Aucun engagement, aucun jargon</li>
+          <li>Des pistes concrètes dès le premier appel</li>
+          <li>En personne en Mauricie, ou en visio partout au Québec</li>
+        </ul>
+        <div class="contact-line" id="contact-line"></div>
+      </div>
+      <form id="lead-form" class="reveal" novalidate>
+        <div class="f-grid">
+          <label>Nom complet *<input name="nom" autocomplete="name" required maxlength="120"></label>
+          <label>Entreprise *<input name="entreprise" autocomplete="organization" required maxlength="160"></label>
+          <label>Courriel *<input name="courriel" type="email" autocomplete="email" required maxlength="200"></label>
+          <label>Téléphone<input name="telephone" type="tel" autocomplete="tel" maxlength="40"></label>
+          <label>Secteur
+            <select name="secteur">
+              <option value="">Choisir…</option>
+              <option>Construction / services</option>
+              <option>Usine / maintenance</option>
+              <option>Transport / logistique</option>
+              <option>Commerce / services professionnels</option>
+              <option>Autre</option>
+            </select>
+          </label>
+          <label>Nombre d’employés
+            <select name="employes"><option value="">Choisir…</option><option>1 à 5</option><option>6 à 20</option><option>21 à 50</option><option>51 et plus</option></select>
+          </label>
+          <label class="full">Qu’est-ce qui vous fait perdre le plus de temps?<textarea name="besoin" maxlength="2000" placeholder="Ex. : on prépare les soumissions à la main et on manque des appels quand on est sur les chantiers."></textarea></label>
+          <div class="hp" aria-hidden="true"><label>Ne pas remplir<input name="site_web" tabindex="-1" autocomplete="off"></label></div>
+          <label class="consent full"><input type="checkbox" name="consentement" required><span>J’accepte que Stony Automation utilise ces renseignements pour me recontacter au sujet de ma demande. Je peux retirer mon consentement en tout temps. <a href="confidentialite.html" target="_blank">Politique de confidentialité</a></span></label>
+        </div>
+        <button class="btn primary" type="submit">Réserver mon diagnostic gratuit →</button>
+        <div class="f-msg" id="f-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap center">
+      <span class="eyebrow">Questions fréquentes</span>
+      <h2 class="reveal">Vous vous posez sûrement ces questions</h2>
+    </div>
+    <div class="faq">
+      <details><summary>Je ne connais rien à l’IA. Est-ce que c’est pour moi?</summary><p>Oui, justement. Vous n’avez rien à apprendre de technique : on part de vos tâches de tous les jours et on vous livre un outil simple, avec une formation pour votre équipe.</p></details>
+      <details><summary>Combien de temps avant de voir des résultats?</summary><p>Le diagnostic se fait en quelques jours. Une première automatisation simple est souvent prête en 2 à 4 semaines, selon votre situation et vos outils actuels.</p></details>
+      <details><summary>Combien ça coûte?</summary><p>Ça dépend de ce qui est automatisé. C’est pour ça qu’on commence par un diagnostic : vous connaissez le coût et le gain estimé avant de prendre une décision.</p></details>
+      <details><summary>Est-ce que l’IA va remplacer mes employés?</summary><p>Non. Le but est d’enlever la paperasse et les tâches répétitives pour que votre équipe se concentre sur le travail qui rapporte : servir les clients, produire, vendre.</p></details>
+      <details><summary>Mes données sont-elles en sécurité?</summary><p>Oui. On applique la Loi 25 du Québec : accès limités, aucune revente de données, et vous restez propriétaire de vos informations. Les systèmes de sécurité de vos machines ne sont jamais touchés.</p></details>
+      <details><summary>Le diagnostic est vraiment gratuit?</summary><p>Le premier appel de 30 minutes est gratuit et sans engagement. Si un diagnostic complet est utile, on vous le propose avec un prix clair avant de commencer.</p></details>
+    </div>
+    <div class="center" style="margin-top:40px"><a class="btn primary" href="#diagnostic">Réserver mon diagnostic gratuit →</a></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="f-cols">
+      <div>
+        <a class="logo" href="#top" style="display:flex">
+          <svg width="32" height="32" viewBox="4 4 56 58" aria-hidden="true">
+            <polygon points="18,18 34,8 30,28" fill="#F5F3EF"/><polygon points="34,8 52,16 42,36 30,28" fill="#E4DED4"/>
+            <polygon points="52,16 56,38 42,36" fill="#CBD2D9"/><polygon points="56,38 44,56 42,36" fill="#9AA5B1"/>
+            <polygon points="44,56 22,58 26,44 42,36" fill="#7B8794"/><polygon points="22,58 10,40 26,44" fill="#9AA5B1"/>
+            <polygon points="10,40 18,18 30,28 26,44" fill="#CBD2D9"/><polygon points="30,28 42,36 26,44" fill="#4FA883"/>
+          </svg>
+          <span><b>Stony</b> <span>Automation</span></span>
+        </a>
+        <p style="margin-top:14px;max-width:320px">L’automatisation solide pour les PME du Québec. Trois-Rivières, Mauricie.</p>
+      </div>
+      <div><h4>Liens</h4><a href="#expertise">Expertise</a><a href="#services">Services</a><a href="#faq">FAQ</a><a href="#diagnostic">Diagnostic gratuit</a></div>
+      <div><h4>Contact</h4><div id="footer-contact"></div><a href="confidentialite.html">Politique de confidentialité</a></div>
+    </div>
+    <div class="f-bottom"><span>© <span id="yr"></span> Stony Automation. Tous droits réservés.</span><span>Fait avec soin à Trois-Rivières</span></div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<script>
+  /* ====== À PERSONNALISER : tes coordonnées (laisse vide pour masquer) ====== */
+  const CONTACT = {
+    courriel: '',      // ex. : 'taoufik@stony-automation.ca'
+    telephone: ''      // ex. : '819 555-1234'
+  };
+  /* ========================================================================== */
+
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const telHref = t => 'tel:' + t.replace(/[^\d+]/g, '');
+  const lines = [];
+  if (CONTACT.telephone) lines.push(`<a href="${telHref(CONTACT.telephone)}">📞 ${esc(CONTACT.telephone)}</a>`);
+  if (CONTACT.courriel) lines.push(`<a href="mailto:${esc(CONTACT.courriel)}">✉️ ${esc(CONTACT.courriel)}</a>`);
+  document.getElementById('contact-line').innerHTML = lines.join('');
+  document.getElementById('footer-contact').innerHTML = lines.join('') || '<a href="#diagnostic">Formulaire de contact</a>';
+
+  // En-tête au défilement + apparitions
+  const hdr = document.querySelector('header');
+  addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 }) : null;
+  document.querySelectorAll('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('in'));
+
+  // Formulaire → table « leads » de Supabase → section Prospection du tableau de bord
+  const form = document.getElementById('lead-form'), msg = document.getElementById('f-msg');
+  const show = (txt, ok) => { msg.className = 'f-msg ' + (ok ? 'ok' : 'err'); msg.innerHTML = txt; };
+  const cfg = window.AGENCE_CONFIG || {};
+  const client = (window.supabase && cfg.supabaseUrl && cfg.supabaseAnonKey)
+    ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+  let sentAt = 0;
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = form.elements;
+    if (f.site_web.value) return show('Merci! Votre demande a bien été envoyée.', true); // robot
+    const data = {
+      nom: f.nom.value.trim(), entreprise: f.entreprise.value.trim(), courriel: f.courriel.value.trim(),
+      telephone: f.telephone.value.trim() || null, secteur: f.secteur.value || null, employes: f.employes.value || null,
+      besoin: f.besoin.value.trim() || null, consentement: f.consentement.checked, source: 'Site web'
+    };
+    if (!data.nom || !data.entreprise) return show('Merci d’indiquer votre nom et le nom de votre entreprise.');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.courriel)) return show('Le courriel ne semble pas valide.');
+    if (!data.consentement) return show('Merci de cocher la case de consentement pour que l’on puisse vous recontacter.');
+    if (Date.now() - sentAt < 15000) return show('Votre demande vient déjà d’être envoyée. Merci!', true);
+    const btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Envoi…';
+    let ok = false;
+    try { if (client) { const { error } = await client.from('leads').insert(data); ok = !error; if (error) console.warn(error.message); } }
+    catch (err) { console.warn(err); }
+    btn.disabled = false; btn.textContent = 'Réserver mon diagnostic gratuit →';
+    if (ok) {
+      sentAt = Date.now(); form.reset();
+      show('<b>Merci!</b> Votre demande est bien reçue. Nous vous recontactons dans un délai de 24 h ouvrables.', true);
+    } else {
+      const alt = CONTACT.courriel ? ` Écrivez-nous directement à <a href="mailto:${esc(CONTACT.courriel)}?subject=${encodeURIComponent('Diagnostic gratuit — ' + data.entreprise)}">${esc(CONTACT.courriel)}</a>.` : ' Merci de réessayer dans quelques minutes.';
+      show('Oups, l’envoi n’a pas fonctionné.' + alt);
+    }
+  });
+</script>
+</body>
+</html>

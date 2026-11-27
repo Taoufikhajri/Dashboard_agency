@@ -203,6 +203,20 @@ Aucune configuration : ces deux sections apparaissent dans le menu après la mis
 
 Les chiffres sont des estimations : valide-les toujours avec le client.
 
+## 🌐 Site web (landing page)
+
+Ton site public est à l'adresse **`https://TON-SITE.vercel.app/site/`** (bouton « 🌐 Mon site » dans Prospection).
+Les demandes envoyées par le formulaire arrivent directement dans **🎯 Prospection** (carte « 📥 Nouvelles demandes du site »).
+
+À faire une seule fois :
+1. Supabase → **SQL Editor** → New query → colle le contenu de **`supabase-leads.sql`** → **Run**.
+2. Dans **`site/index.html`**, en bas du fichier, remplis `CONTACT` (ton courriel et ton téléphone).
+   Mets le même courriel dans **`site/confidentialite.html`** (`COURRIEL`). Sauvegarde, puis envoie sur GitHub : Vercel met le site à jour tout seul.
+3. Fais un test : remplis le formulaire du site, puis ouvre Prospection dans le tableau de bord.
+
+Les visiteurs peuvent seulement **envoyer** une demande : personne ne peut lire la liste à part toi (connecté).
+Le formulaire demande le consentement (Loi 25), et la politique de confidentialité est sur `/site/confidentialite.html` (relis-la et adapte-la au besoin).
+
 ## Pièces jointes (projets et actions)
 
 **À faire une seule fois :** dans Supabase, **SQL Editor → New query**, colle tout le fichier `supabase-documents.sql`, puis clique sur **Run**. Cela crée un espace de stockage **privé** nommé `documents` : chaque utilisateur ne voit que ses propres fichiers.
