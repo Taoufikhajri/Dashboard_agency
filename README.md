@@ -19,6 +19,7 @@ Elle inclut :
 | `brand.js` | Marque Stony Automation : logo, charte graphique, mise en page des PDF |
 | `documents.js` | Pièces jointes des projets et des actions (Supabase Storage) |
 | `supabase-documents.sql` | Crée l'espace de stockage privé des pièces jointes |
+| `theme.js` | Mode nuit (Jour / Nuit / Auto) |
 | `vercel.json` | Un réglage de Vercel pour la fonction serveur |
 | `supabase-cle-api.sql` | Le code qui permet de gérer la clé API depuis le tableau de bord |
 
@@ -187,6 +188,12 @@ Ensuite, **redéploie** : onglet **Deployments**, bouton **⋯** sur le dernier 
 - Pour ouvrir un fichier, clique sur son nom : un lien temporaire de 5 minutes s'ouvre.
 - Pour supprimer un fichier, clique deux fois sur ✕. Quand tu supprimes un projet ou une action, ses fichiers sont supprimés aussi.
 - Les fichiers **texte** (`.txt`, `.md`, `.csv`, `.json`) sont **lus par les agents** quand ils travaillent sur l'action ou discutent du projet en réunion. Pour les PDF, les images et les fichiers Word ou Excel, les agents ne voient que le nom.
+
+---
+
+## Mode nuit
+
+En bas du menu, choisis **☀️ Jour**, **🌙 Nuit** ou **🖥 Auto**. Le mode Auto suit le réglage de ton ordinateur ou de ton téléphone. Le raccourci **Alt + N** passe du jour à la nuit. Le choix est gardé sur chaque appareil. Les PDF restent toujours en version claire.
 
 ---
 
