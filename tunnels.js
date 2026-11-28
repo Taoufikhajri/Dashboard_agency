@@ -489,6 +489,8 @@ function emailsTab() {
     <label>Courriel d’envoi (le même que confirmé dans Brevo)<input id="es-mail" type="email" value="${esc(s.expediteur_courriel || '')}" placeholder="toi@exemple.com"></label>
     <label>Adresse postale (obligatoire, Loi anti-pourriel)<input id="es-adr" value="${esc(s.adresse_postale || '')}" placeholder="Case postale ou adresse d’affaires, Trois-Rivières (Québec)"><small class="muted">La loi exige une adresse postale valide dans chaque courriel commercial. Une case postale convient.</small></label>
     <div class="tn-row"><button class="btn primary" data-tn-savesettings>Enregistrer</button><button class="btn" data-tn-test ${ready ? '' : 'disabled'}>📨 M’envoyer un essai</button></div>
+    <div class="tn-row"><input id="tst-to" type="email" placeholder="Envoyer l’essai à une autre adresse (facultatif)"><button class="btn" data-tn-events ${TN.keyInfo ? '' : 'disabled'}>🔍 Vérifier la livraison</button></div>
+    <div id="tn-diag"></div>
   </div></div>
 
   <div class="card"><div class="toolbar" style="margin:0"><h3 style="margin:0">⏱ Envois automatiques</h3><span class="sp"></span><button class="btn small" data-tn-run ${ready ? '' : 'disabled'}>▶ Envoyer maintenant les courriels en attente (${due})</button></div>
@@ -507,6 +509,21 @@ function emailsTab() {
     ${TN.log.map(l => `<tr><td class="small">${new Date(l.created_at).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' })}</td><td class="small">${esc(l.courriel || '')}</td><td class="small">${esc(l.sujet || '')}</td><td class="small">${esc(l.type || '')}</td><td>${l.statut === 'envoye' ? '<span class="badge green">envoyé</span>' : `<span class="badge red" title="${esc(l.erreur || '')}">erreur</span><div class="muted small">${esc(l.erreur || '')}</div>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Aucun envoi pour l’instant.</td></tr>'}
   </tbody></table></div></div>`;
 }
+const EV_FR = { requests: ['📤', 'Accepté par Brevo', ''], delivered: ['✅', 'Livré', 'green'], opened: ['👀', 'Ouvert', 'green'], uniqueOpened: ['👀', 'Ouvert', 'green'], clicks: ['🖱', 'Cliqué', 'green'], deferred: ['⏳', 'Retardé (nouvel essai automatique)', 'orange'], softBounces: ['↩️', 'Refusé temporairement (soft bounce)', 'orange'], hardBounces: ['⛔', 'Refusé définitivement (hard bounce)', 'red'], blocked: ['⛔', 'Bloqué par Brevo', 'red'], invalid: ['⛔', 'Adresse invalide', 'red'], spam: ['🚫', 'Marqué comme pourriel', 'red'], unsubscribed: ['🚪', 'Désabonné', 'orange'], error: ['⛔', 'Erreur', 'red'] };
+function deliveryDiag(r) {
+  const free = /@(gmail|googlemail|yahoo|hotmail|outlook|live|msn|icloud|me|videotron|sympatico|aol)\./i.test(r.expediteur || '');
+  const sender = (r.senders || []).find(x => String(x.email).toLowerCase() === String(r.expediteur || '').toLowerCase());
+  const tips = [];
+  if (!sender) tips.push(`⛔ L’expéditeur <b>${esc(r.expediteur || '—')}</b> n’existe pas dans Brevo. Ajoute-le : Brevo → Expéditeurs, domaines et IP → Expéditeurs → Ajouter, puis clique le lien de confirmation reçu par courriel.`);
+  else if (!sender.active) tips.push(`⛔ L’expéditeur <b>${esc(r.expediteur)}</b> n’est pas encore confirmé dans Brevo : ouvre le courriel de confirmation de Brevo et clique le lien.`);
+  if (free) tips.push('⚠️ Ton expéditeur est une adresse gratuite (Gmail, Hotmail…). Brevo remplace l’adresse et les boîtes de réception envoient souvent ces courriels aux indésirables, surtout si tu t’envoies à toi-même. Fais un essai vers une <b>autre</b> adresse, et prévois ton propre domaine.');
+  const evs = r.events || [];
+  if (!evs.length) tips.push(`Aucun événement dans Brevo pour <b>${esc(r.email)}</b> sur 7 jours. Si tu viens d’envoyer, attends 1 à 2 minutes et réessaie. Sinon, l’envoi n’a jamais atteint Brevo.`);
+  const last = evs[0];
+  if (last && ['delivered', 'opened', 'uniqueOpened', 'clicks'].includes(last.event)) tips.push('✅ Le courriel est <b>livré</b> à ta boîte : regarde dans <b>Indésirables / Spam</b>, <b>Promotions</b> ou <b>Autres</b> (Outlook), et cherche « [TEST] ».');
+  return `<div class="info small" style="margin-top:10px">${tips.map(x => `<div style="margin:4px 0">${x}</div>`).join('')}</div>
+  ${evs.length ? `<div class="table-wrap"><table><thead><tr><th>Quand</th><th>Statut</th><th>Sujet</th><th>Raison</th></tr></thead><tbody>${evs.slice(0, 12).map(e => { const f = EV_FR[e.event] || ['•', e.event, '']; return `<tr><td class="small">${new Date(e.date).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' })}</td><td><span class="badge ${f[2]}">${f[0]} ${esc(f[1])}</span></td><td class="small">${esc(e.subject || '')}</td><td class="small">${esc(e.reason || '')}</td></tr>`; }).join('')}</tbody></table></div>` : ''}`;
+}
 function broadcastCount() {
   const tag = $('#bc-tag') ? $('#bc-tag').value : '';
   return TN.contacts.filter(c => !c.desabonne && c.consentement && (!tag || (c.etiquettes || []).includes(tag))).length;
@@ -515,7 +532,7 @@ document.addEventListener('change', e => { if (e.target.id === 'bc-tag') $('#bc-
 
 /* ---------- Clics ---------- */
 document.addEventListener('click', async e => {
-  const t = e.target.closest && e.target.closest('[data-tn-tab],[data-tn-reload],[data-tn-new],[data-tn-edit],[data-tn-back],[data-tn-save],[data-tn-copy],[data-tn-toggle],[data-tn-del],[data-tn-prev],[data-tn-mobile],[data-tn-export],[data-tn-cdel],[data-tn-seqnew],[data-tn-seqai],[data-tn-seqedit],[data-tn-seqback],[data-tn-seqsave],[data-tn-seqdel],[data-tn-stepadd],[data-tn-stepdel],[data-tn-stepmove],[data-tn-steptest],[data-tn-savekey],[data-tn-delkey],[data-tn-savesettings],[data-tn-test],[data-tn-run],[data-tn-broadcast]');
+  const t = e.target.closest && e.target.closest('[data-tn-tab],[data-tn-reload],[data-tn-new],[data-tn-edit],[data-tn-back],[data-tn-save],[data-tn-copy],[data-tn-toggle],[data-tn-del],[data-tn-prev],[data-tn-mobile],[data-tn-export],[data-tn-cdel],[data-tn-seqnew],[data-tn-seqai],[data-tn-seqedit],[data-tn-seqback],[data-tn-seqsave],[data-tn-seqdel],[data-tn-stepadd],[data-tn-stepdel],[data-tn-stepmove],[data-tn-steptest],[data-tn-savekey],[data-tn-delkey],[data-tn-savesettings],[data-tn-test],[data-tn-events],[data-tn-run],[data-tn-broadcast]');
   if (!t) return;
   const d = t.dataset;
   const cur = () => TN.funnels.find(x => x.id === TN.editId);
@@ -584,7 +601,16 @@ document.addEventListener('click', async e => {
       const { data, error } = await sb().from('email_settings').upsert(row).select().single(); if (error) throw error;
       TN.settings = data; render(); toast('Réglages enregistrés ✓');
     }
-    else if (d.tnTest !== undefined) { t.disabled = true; const r = await funnelApi('test', {}); toast(`📨 Essai envoyé à ${r.to} : vérifie ta boîte (et les indésirables)`); t.disabled = false; }
+    else if (d.tnTest !== undefined) {
+      t.disabled = true; const to = ($('#tst-to') || {}).value || '';
+      const r = await funnelApi('test', to ? { to } : {});
+      toast(`📨 Brevo a accepté l’essai pour ${r.to}. Attends 1 minute, puis clique « Vérifier la livraison ».`); t.disabled = false;
+    }
+    else if (d.tnEvents !== undefined) {
+      t.disabled = true; const to = ($('#tst-to') || {}).value || '';
+      const r = await funnelApi('events', to ? { email: to } : {}); t.disabled = false;
+      $('#tn-diag').innerHTML = deliveryDiag(r);
+    }
     else if (d.tnRun !== undefined) { t.disabled = true; const r = await funnelApi('run'); toast(r.erreur ? `⚠ ${r.erreur}` : `${r.envoyes} courriel(s) envoyé(s)`); TN.loaded = false; await loadTunnels(true); }
     else if (d.tnBroadcast !== undefined) {
       const sujet = $('#bc-sujet').value.trim(), corps = $('#bc-corps').value.trim(), etiquette = $('#bc-tag').value;

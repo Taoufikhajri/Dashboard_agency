@@ -140,6 +140,9 @@ async function brevoSend(settings, to, mail, unsubUrl) {
     if (/unrecognised IP|unrecognized IP|authorised_ips|not verified/i.test(m)) throw new Error('Brevo bloque l’adresse IP de Vercel (elle change à chaque envoi). Dans Brevo : Sécurité → IP autorisées → « Désactiver le blocage » pour l’API, puis réessaie.');
     throw new Error('Brevo a refusé l’envoi' + (m ? ' : ' + m : ` (${r.status})`));
   }
+  let j = {}; try { j = await r.json(); } catch (e) { }
+  console.log('[brevo] accepté', r.status, j.messageId || '', '→', to.courriel.replace(/^(.{2}).*@/, '$1***@'));
+  return j.messageId || '';
 }
 async function logEmail(owner, contact, sujet, type, statut, erreur) {
   try { await db('POST', 'email_log', { owner, contact_id: contact && contact.id || null, courriel: contact && contact.courriel || null, sujet: clip(sujet, 300), type, statut, erreur: erreur ? clip(erreur, 500) : null }, 'return=minimal'); } catch (e) { }
@@ -281,9 +284,21 @@ module.exports = async function handler(req, res) {
       const fake = { id: '00000000-0000-0000-0000-000000000000', courriel: to, prenom: b.prenom || 'Taoufik', entreprise: 'Entreprise Test' };
       const unsubUrl = `${base}/api/funnel?action=unsub&c=${fake.id}&t=exemple`;
       const mail = buildEmail(settings, fake, '[TEST] ' + (b.sujet || 'Courriel d’essai'), b.corps || 'Bonjour {{prenom}},\n\nCeci est un courriel d’essai envoyé depuis ton tableau de bord Stony Automation. Si tu le reçois, Brevo est bien configuré. ✅', unsubUrl);
-      await brevoSend(settings, fake, mail, unsubUrl);
+      const messageId = await brevoSend(settings, fake, mail, unsubUrl);
       await logEmail(user.id, { courriel: to }, mail.subject, 'test', 'envoye');
-      return send(res, 200, { ok: true, to });
+      return send(res, 200, { ok: true, to, messageId, expediteur: settings.expediteur_courriel });
+    }
+    if (action === 'events') {
+      const settings = await ownerSettings(user.id);
+      if (!settings.apiKey) return send(res, 400, { error: 'Clé Brevo manquante.' });
+      const email = clip(b.email || settings.expediteur_courriel || user.email, 200);
+      const h = { 'api-key': settings.apiKey, Accept: 'application/json' };
+      const ev = await fetch(`https://api.brevo.com/v3/smtp/statistics/events?limit=25&sort=desc&days=7&email=${q(email)}`, { headers: h });
+      let ej = {}; try { ej = await ev.json(); } catch (e) { }
+      if (!ev.ok) return send(res, 502, { error: 'Brevo : ' + (ej.message || ev.status) });
+      let senders = [];
+      try { const sr = await fetch('https://api.brevo.com/v3/senders', { headers: h }); const sj = await sr.json(); senders = (sj.senders || []).map(x => ({ email: x.email, active: x.active })); } catch (e) { }
+      return send(res, 200, { email, events: (ej.events || []).map(e => ({ date: e.date, event: e.event, subject: e.subject, reason: e.reason || '', from: e.from || '' })), senders, expediteur: settings.expediteur_courriel });
     }
     if (action === 'broadcast') {
       const sujet = clip(b.sujet, 200), corps = clip(b.corps, 20000), tag = clip(b.etiquette, 40);
