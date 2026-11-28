@@ -268,6 +268,20 @@
     }
     @media (max-width: 520px) { .who-grid { grid-template-columns: 1fr; } .desk-kpis b { font-size: 16px; } .desk-flow .node { font-size: 10.5px; padding: 8px 4px; } .desk-flow .arrow { width: 8px; } }
     @media (prefers-reduced-motion: reduce) { .track, .glow, .pill .dot { animation: none; } }
+
+    /* Icônes IA modernes */
+    .ai-ico { position: relative; width: 62px; height: 62px; border-radius: 16px; display: grid; place-items: center; margin-bottom: 18px; color: #fff;
+      background: linear-gradient(135deg, #1F2933 0%, #2F6F57 60%, #4FA883 100%);
+      box-shadow: 0 10px 24px rgba(47,111,87,.28), inset 0 1px 0 rgba(255,255,255,.18); transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s; }
+    .ai-ico::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(127,196,164,.9), rgba(255,255,255,0) 55%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+    .ai-ico svg { width: 32px; height: 32px; position: relative; z-index: 1; }
+    .ai-ico .spark { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #CFE5D9; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 12px rgba(127,196,164,.9);
+      -webkit-mask: none; display: grid; place-items: center; }
+    .ai-ico .spark::after { content: ''; width: 9px; height: 9px; background: #2F6F57; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: twinkle 2.6s ease-in-out infinite; }
+    @keyframes twinkle { 50% { transform: rotate(90deg) scale(.75); } }
+    .who-c:hover .ai-ico, .card:hover .ai-ico { transform: translateY(-3px) rotate(-4deg); box-shadow: 0 16px 34px rgba(47,111,87,.38), inset 0 1px 0 rgba(255,255,255,.2); }
+    .who-c .ai-ico { display: grid; font-size: inherit; margin-bottom: 18px; }
+    @media (prefers-reduced-motion: reduce) { .ai-ico .spark::after { animation: none; } }
   </style>
 </head>
 <body>
@@ -360,19 +374,19 @@
     </div>
     <div class="wrap cards">
       <div class="card reveal">
-        <div class="ic">⚙️</div>
+        <span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></svg><i class="spark"></i></span>
         <h3>Automatisation des tâches</h3>
         <p>Les tâches répétitives se font <b>toutes seules</b> : de la demande du client jusqu’à la facture.</p>
         <ul><li>Soumissions et factures générées</li><li>Relances et rappels automatiques</li><li>Fini la double saisie entre logiciels</li></ul>
       </div>
       <div class="card reveal">
-        <div class="ic">🧩</div>
+        <span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><path d="M17.25 14v6.5M14 17.25h6.5"/></svg><i class="spark"></i></span>
         <h3>Outils sur mesure</h3>
         <p>Quand Excel ne suffit plus : un outil simple, <b>fait pour votre façon de travailler</b>.</p>
         <ul><li>Gestionnaire de projets et de chantiers</li><li>Suivi de maintenance (GMAO légère)</li><li>Tableaux de bord en temps réel</li></ul>
       </div>
       <div class="card reveal">
-        <div class="ic">🤖</div>
+        <span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9.5 2.5V6M14.5 2.5V6M9.5 18v3.5M14.5 18v3.5M2.5 9.5H6M2.5 14.5H6M18 9.5h3.5M18 14.5h3.5"/><path d="M12 9.3l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" fill="currentColor"/></svg><i class="spark"></i></span>
         <h3>Assistants IA</h3>
         <p>Une IA qui travaille pour vous, <b>encadrée et vérifiée</b>, jamais laissée sans contrôle.</p>
         <ul><li>Réponse aux appels et aux courriels</li><li>Prise de rendez-vous 24 h/24</li><li>Rédaction de rapports et de résumés</li></ul>
@@ -437,10 +451,10 @@
       <h2 class="reveal">Fait pour les PME <em>qui travaillent sur le terrain</em></h2>
     </div>
     <div class="wrap who-grid">
-      <div class="who-c reveal"><span>🏗️</span><h3>Construction et services</h3><p>Soumissions, appels de clients, suivis de chantiers, factures.</p></div>
-      <div class="who-c reveal"><span>🏭</span><h3>Usines et maintenance</h3><p>Bons de travail, entretien préventif, pièces, rapports d’intervention.</p></div>
-      <div class="who-c reveal"><span>🚚</span><h3>Transport et logistique</h3><p>Répartition, confirmations, suivis clients, documents de livraison.</p></div>
-      <div class="who-c reveal"><span>💼</span><h3>Bureaux et services pros</h3><p>Courriels répétitifs, prise de rendez-vous, saisie et classement.</p></div>
+      <div class="who-c reveal"><span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 19h20"/><path d="M4 19v-2a8 8 0 0 1 16 0v2"/><path d="M10 9V5.5h4V9"/><path d="M8 13.5l1.5-1.5M16 13.5L14.5 12"/></svg><i class="spark"></i></span><h3>Construction et services</h3><p>Soumissions, appels de clients, suivis de chantiers, factures.</p></div>
+      <div class="who-c reveal"><span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V10l5 3.5V10l5 3.5V5h5l1 15z"/><path d="M7 17h2M12 17h2"/><path d="M15 5V3"/></svg><i class="spark"></i></span><h3>Usines et maintenance</h3><p>Bons de travail, entretien préventif, pièces, rapports d’intervention.</p></div>
+      <div class="who-c reveal"><span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5h11v9.5H2z"/><path d="M13 9.5h4.5L21 13v3h-8"/><circle cx="6.5" cy="17.5" r="2"/><circle cx="16.5" cy="17.5" r="2"/></svg><i class="spark"></i></span><h3>Transport et logistique</h3><p>Répartition, confirmations, suivis clients, documents de livraison.</p></div>
+      <div class="who-c reveal"><span class="ai-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M3 12.5h18"/><path d="M11 12.5v2h2v-2"/></svg><i class="spark"></i></span><h3>Bureaux et services pros</h3><p>Courriels répétitifs, prise de rendez-vous, saisie et classement.</p></div>
     </div>
   </section>
 
